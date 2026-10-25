@@ -1,0 +1,179 @@
+#!/usr/bin/env node
+/* 测试用 Multica CLI 替身：只覆盖 Agent Runner 桥接用到的子命令。
+ * 状态落 STUB_MULTICA_STATE（JSON），不访问真实 Multica。
+ */
+import fs from 'node:fs';
+
+const STATE_PATH = process.env.STUB_MULTICA_STATE || '/tmp/stub-multica-state.json';
+const argv = process.argv.slice(2);
+const out = v => process.stdout.write(typeof v === 'string' ? v + '\n' : JSON.stringify(v));
+const fail = msg => { process.stderr.write(msg + '\n'); process.exit(1); };
+const now = () => new Date().toISOString();
+const readStdin = () => { try { return fs.readFileSync(0, 'utf8'); } catch { return ''; } };
+const flag = (name, fallback = null) => {
+  const i = argv.indexOf(name);
+  return i >= 0 && i + 1 < argv.length ? argv[i + 1] : fallback;
+};
+const has = name => argv.includes(name);
+
+function seed() {
+  const mk = (n, over = {}) => ({
+    id: 'iss-' + n, identifier: 'WORK-' + n, title: `示例父任务 ${n}`, status: 'todo',
+    priority: 'low', parent_issue_id: null, assignee_id: null, assignee_type: null,
+    stage: null, due_date: '2026-10-30', created_at: now(), updated_at: now(),
+    labels: [{ name: 'work-space' }], metadata: {}, comments: [],
+    ...over,
+  });
+  return {
+    next: 1200,
+    agents: [
+      { id: 'agent-1', name: 'daily-task-executor', status: 'active', runtime_id: 'rt-1', model: 'stub' },
+      { id: 'agent-2', name: 'code-reviewer', status: 'active', runtime_id: 'rt-2', model: 'stub' },
+      { id: 'agent-3', name: 'retired-agent', status: 'archived', archived_at: now(), model: 'stub' },
+    ],
+    labels: [
+      { id: 'lbl-work', name: 'work-space' }, { id: 'lbl-todo', name: 'todo' },
+      { id: 'lbl-implement', name: 'implement' }, { id: 'lbl-infra', name: 'infra' },
+    ],
+    issues: [
+      mk(101, { title: '[work-space]-[implement]-路由器观察台', status: 'in_progress', assignee_id: 'agent-1', assignee_type: 'agent' }),
+      mk(102, { title: '[work-space]-[implement]-网关重试', status: 'todo' }),
+      mk(103, { title: '[work-space]-[infra]-构建缓存', status: 'blocked', assignee_id: 'agent-2', assignee_type: 'agent' }),
+      mk(111, { title: '[work-space]-[implement]-子任务：路由图', status: 'todo', parent_issue_id: 'iss-101', stage: 1, assignee_id: 'agent-1', assignee_type: 'agent' }),
+      mk(112, { title: '[work-space]-[implement]-子任务：验收', status: 'done', parent_issue_id: 'iss-101', stage: 2 }),
+    ],
+  };
+}
+
+function load() {
+  try { return JSON.parse(fs.readFileSync(STATE_PATH, 'utf8')); }
+  catch { return seed(); }
+}
+function save(s) {
+  fs.mkdirSync(STATE_PATH.replace(/\/[^/]+$/, ''), { recursive: true });
+  fs.writeFileSync(STATE_PATH, JSON.stringify(s, null, 2));
+}
+function cleanIssue(x) {
+  return {
+    id: x.id, identifier: x.identifier, title: x.title, status: x.status, priority: x.priority,
+    parent_issue_id: x.parent_issue_id, assignee_id: x.assignee_id, assignee_type: x.assignee_type,
+    stage: x.stage, due_date: x.due_date, created_at: x.created_at, updated_at: x.updated_at,
+    labels: x.labels.map(l => ({ id: l.id || null, name: l.name })),
+    metadata: x.metadata || {},
+  };
+}
+function find(id) {
+  const s = load();
+  const x = s.issues.find(i => i.id === id || i.identifier === id);
+  if (!x) fail(`issue not found: ${id}`);
+  return { s, x };
+}
+
+const cmd = argv[0];
+if (cmd === '--version') { out('multica v0.0.0-stub'); process.exit(0); }
+
+if (cmd === 'agent') {
+  const s = load();
+  if (argv[1] === 'list') out(s.agents.filter(a => !a.archived_at));
+  else fail('unsupported agent command');
+  process.exit(0);
+}
+
+if (cmd === 'label') {
+  const s = load();
+  if (argv[1] === 'list') out(s.labels);
+  else fail('unsupported label command');
+  process.exit(0);
+}
+
+if (cmd === 'issue') {
+  const sub = argv[1];
+  const s = load();
+  if (sub === 'list') {
+    const limit = Number(flag('--limit', 30));
+    const rows = s.issues.filter(i => !i.parent_issue_id)
+      .sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)))
+      .slice(0, limit).map(cleanIssue);
+    out({ issues: rows });
+    process.exit(0);
+  }
+  if (sub === 'search') {
+    const q = String(argv[2] || '').toLowerCase();
+    const limit = Number(flag('--limit', 30));
+    const rows = s.issues.filter(i => (i.title + ' ' + i.identifier).toLowerCase().includes(q))
+      .slice(0, limit).map(cleanIssue);
+    out({ issues: rows });
+    process.exit(0);
+  }
+  if (sub === 'get') {
+    const { x } = find(argv[2]);
+    out(cleanIssue(x));
+    process.exit(0);
+  }
+  if (sub === 'children') {
+    const { x } = find(argv[2]);
+    const children = s.issues.filter(i => i.parent_issue_id === x.id).sort((a, b) => (a.stage || 0) - (b.stage || 0) || a.identifier.localeCompare(b.identifier));
+    const stages = [];
+    for (const c of children) {
+      const stage = c.stage || 0;
+      let row = stages.find(r => r.stage === stage);
+      if (!row) { row = { stage, total: 0, done: 0, issues: [] }; stages.push(row); }
+      row.issues.push(cleanIssue(c)); row.total++;
+      if (c.status === 'done') row.done++;
+    }
+    out({ stages, total: children.length, unstaged: [] });
+    process.exit(0);
+  }
+  if (sub === 'create') {
+    s.next++;
+    const n = s.next;
+    const parent = flag('--parent');
+    const stage = Number(flag('--stage', 0)) || null;
+    const title = flag('--title', '(untitled)');
+    readStdin();
+    const x = {
+      id: 'iss-' + n, identifier: 'WORK-' + n, title, status: flag('--status', 'todo'),
+      priority: flag('--priority', 'low'), parent_issue_id: parent || null,
+      assignee_id: null, assignee_type: null, stage, due_date: flag('--due-date'),
+      created_at: now(), updated_at: now(), labels: [], metadata: {}, comments: [],
+    };
+    s.issues.push(x); save(s); out(cleanIssue(x)); process.exit(0);
+  }
+  if (sub === 'update') {
+    const { s: st, x } = find(argv[2]);
+    if (flag('--status')) x.status = flag('--status');
+    if (flag('--title')) x.title = flag('--title');
+    x.updated_at = now(); save(st); out(cleanIssue(x)); process.exit(0);
+  }
+  if (sub === 'assign') {
+    const { s: st, x } = find(argv[2]);
+    if (has('--unassign')) { x.assignee_id = null; x.assignee_type = null; }
+    else {
+      const to = flag('--to');
+      const agent = st.agents.find(a => a.name === to || a.id === to);
+      x.assignee_id = agent ? agent.id : to;
+      x.assignee_type = agent ? 'agent' : 'human';
+    }
+    x.updated_at = now(); save(st); out(cleanIssue(x)); process.exit(0);
+  }
+  if (sub === 'label') {
+    const { s: st, x } = find(argv[3]);
+    const label = st.labels.find(l => l.id === argv[4]);
+    if (label && !x.labels.some(l => l.name === label.name)) x.labels.push({ id: label.id, name: label.name });
+    x.updated_at = now(); save(st); out(cleanIssue(x)); process.exit(0);
+  }
+  if (sub === 'metadata') {
+    const { s: st, x } = find(argv[3]);
+    const key = flag('--key'), value = flag('--value');
+    if (key) { x.metadata = x.metadata || {}; x.metadata[key] = value; }
+    x.updated_at = now(); save(st); out(cleanIssue(x)); process.exit(0);
+  }
+  if (sub === 'comment') {
+    const { s: st, x } = find(argv[3]);
+    x.comments = x.comments || [];
+    x.comments.push(readStdin());
+    x.updated_at = now(); save(st); out(cleanIssue(x)); process.exit(0);
+  }
+}
+
+fail('unsupported command: ' + argv.join(' '));

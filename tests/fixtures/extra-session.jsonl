@@ -1,0 +1,10 @@
+{"ts":"2026-10-25T11:00:00+08:00","seq":1,"src":"main","type":"session_start","data":{"task":"本地日志载入冒烟","policy":{"router":"sharp/cheap","advisor":"fable/mid"}}}
+{"ts":"2026-10-25T11:00:01+08:00","seq":2,"src":"main","type":"agent_spawned","data":{"agent":"worker","role":"subagent","label":"worker","model":"opus","task":"写一个产物","step":"S1"}}
+this line is not json
+{"ts":"2026-10-25T11:00:02+08:00","seq":3,"src":"worker","type":"tool_call","data":{"tool":"write","args":"notes/local-smoke.md"}}
+{"ts":"2026-10-25T11:00:03+08:00","seq":4,"src":"worker","type":"result_emitted","data":{"path":"notes/local-smoke.md","kind":"report","created_by":"worker","summary":"本地日志载入产物"}}
+{"ts":"2026-10-25T11:00:04+08:00","seq":5,"src":"main","type":"verification","data":{"target":"notes/local-smoke.md","method":"cat notes/local-smoke.md","verdict":"pass","evidence":"内容与预期一致"}}
+{"ts":"2026-10-25T11:00:05+08:00","seq":6,"src":"worker","type":"subagent_state","data":{"state":"done","note":"完成"}}
+{"ts":"2026-10-25T11:00:06+08:00","seq":7,"src":"main","type":"session_summary","data":{"total_cost":0.0123,"total_tokens":45000,"results_total":1,"results_verified_pass":1,"results_verified_fail":0,"results_pending":0}}
+{"ts":"2026-10-25T11:00:07+08:00","seq":8,"src":"main","type":"agent_finished","data":{"agent":"main","status":"shipped"}}
+{ this line looks like json but is broken

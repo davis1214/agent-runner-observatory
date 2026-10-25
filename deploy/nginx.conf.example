@@ -1,0 +1,25 @@
+# Agent Runner · Nginx 部署示例
+# 1. 把 root 改成项目绝对路径；2. 确认本地服务端口与 scripts/service.sh 的 PORT 一致。
+# 只监听回环地址，不对外暴露。
+server {
+    listen       127.0.0.1:80;
+    server_name  agent-runner.localhost;
+
+    root  /ABS/PATH/TO/2026-10-25-agent-router-observatory;
+    index index.html;
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:8796;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 3600s;
+        add_header Cache-Control "no-store";
+    }
+
+    location / {
+        try_files $uri $uri/ =404;
+        add_header Cache-Control "no-store";
+    }
+}

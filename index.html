@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Agent Runner · 执行监控台</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%230b0e14'/%3E%3Cpath d='M12 4l7 4v8l-7 4-7-4V8z' fill='none' stroke='%23c792ea' stroke-width='1.7'/%3E%3Ccircle cx='12' cy='12' r='2.2' fill='%234dd0e1'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-mark">⬢</span>
+      <div>
+        <span class="brand-name">AGENT RUNNER</span>
+        <span class="brand-sub">执行监控台</span>
+      </div>
+    </div>
+    <div class="side-label">OVERVIEW</div>
+    <nav class="overview-nav" id="overview-nav" aria-label="全部任务"></nav>
+    <div class="side-label">AGENTS</div>
+    <nav class="agent-nav" id="agent-nav" aria-label="Agent 列表"></nav>
+    <div class="side-foot">
+      <button class="bridge-state offline" id="bridge-status" type="button" title="检测本地 Multica 桥接">
+        <span class="bs-dot"></span><span class="bs-text">桥接检测中</span>
+      </button>
+      <button class="bridge-state offline" id="live-status" type="button" data-state="boot" title="订阅磁盘日志变化">
+        <span class="bs-dot"></span><span class="bs-text">实时数据检测中</span>
+      </button>
+      <button class="btn btn-ghost" type="button" data-load>＋ 载入 .jsonl 日志</button>
+      <input type="file" id="file" accept=".jsonl,.log,.txt,application/x-ndjson" multiple hidden>
+      <div class="side-note"><span id="side-mode">本地数据</span> · 会话只读<br>Nginx 托管 · 实时 SSE<br>快照 <b>2026-10-25</b></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="topbar-left" id="crumb"></div>
+      <div class="topbar-right" id="top-stats"></div>
+    </div>
+    <div id="view">
+      <div class="page">
+        <div class="empty-state"><b>正在载入快照…</b><span>如果长时间没有反应，检查 data/dataset.js 是否存在</span></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="drop-zone" id="drop">松手载入 JSONL 日志</div>
+<div class="toast" id="toast" role="status" aria-live="polite" style="display:none"></div>
+<noscript><div class="page"><div class="empty-state"><b>需要启用 JavaScript</b><span>这是纯前端页面，所有派生与渲染都在浏览器里完成</span></div></div></noscript>
+
+<script src="data/dataset.js"></script>
+<script src="assets/version.js"></script>
+<script src="assets/observatory.js"></script>
+<script src="assets/store.js"></script>
+<script src="assets/multica.js"></script>
+<script src="assets/livelog.js"></script>
+<script src="assets/collab.js"></script>
+<script src="assets/app.js"></script>
+<script src="assets/livedata.js"></script>
+</body>
+</html>

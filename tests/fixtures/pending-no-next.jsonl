@@ -1,0 +1,9 @@
+{"ts":"2026-10-25T12:00:00+08:00","seq":1,"src":"main","type":"session_start","data":{"task":"待验证产物冒烟"}}
+{"ts":"2026-10-25T12:00:01+08:00","seq":2,"src":"main","type":"plan","data":{"steps":[{"id":"S1","desc":"生成产物","owner":"worker"}]}}
+{"ts":"2026-10-25T12:00:02+08:00","seq":3,"src":"main","type":"agent_spawned","data":{"agent":"worker","role":"subagent","label":"worker","model":"opus","task":"生成产物","step":"S1"}}
+{"ts":"2026-10-25T12:00:03+08:00","seq":4,"src":"worker","type":"tool_call","data":{"tool":"write","args":"notes/pending.md"}}
+{"ts":"2026-10-25T12:00:04+08:00","seq":5,"src":"worker","type":"result_emitted","data":{"path":"notes/pending.md","kind":"report","created_by":"worker","summary":"尚未验证的产物"}}
+{"ts":"2026-10-25T12:00:05+08:00","seq":6,"src":"main","type":"verification","data":{"target":"notes/pending.md","method":"manual review","verdict":"skip","evidence":"环境未就绪，跳过验证"}}
+{"ts":"2026-10-25T12:00:06+08:00","seq":7,"src":"worker","type":"subagent_state","data":{"state":"done","note":"完成"}}
+{"ts":"2026-10-25T12:00:07+08:00","seq":8,"src":"main","type":"session_summary","data":{"total_cost":0.005,"total_tokens":12000,"results_total":1,"results_verified_pass":0,"results_verified_fail":0,"results_pending":1}}
+{"ts":"2026-10-25T12:00:08+08:00","seq":9,"src":"main","type":"agent_finished","data":{"agent":"main","status":"shipped"}}

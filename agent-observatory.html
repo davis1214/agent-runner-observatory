@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent 执行观测台 · Observatory</title>
+<style>
+  :root{
+    --bg:#0b0e14; --panel:#11151f; --panel2:#0e121b; --line:#232a3a;
+    --fg:#c8d3f0; --dim:#6b768f; --mono:'SF Mono','JetBrains Mono',Menlo,Consolas,monospace;
+    --main:#c792ea; --router:#4dd0e1; --advisor:#ffb86c; --worker:#a3e635; --explorer:#60a5fa; --researcher:#f472b6;
+    --ok:#4ade80; --warn:#facc15; --fail:#f87171;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--fg);font-family:var(--mono);font-size:13px;line-height:1.5;padding:18px 22px 60px}
+  h1{font-size:16px;letter-spacing:.5px}
+  h2{font-size:12px;color:var(--dim);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px;font-weight:600}
+  h2 .q{color:var(--fg)}
+  header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+  header .sub{color:var(--dim);font-size:11px}
+  .toolbar{margin-left:auto;display:flex;gap:8px;align-items:center}
+  .btn{background:var(--panel);border:1px solid var(--line);color:var(--fg);font-family:var(--mono);font-size:11px;padding:5px 10px;border-radius:6px;cursor:pointer}
+  .btn:hover{border-color:var(--main)}
+  #taskline{color:var(--dim);font-size:11px;margin-bottom:14px}
+  #taskline b{color:var(--fg)}
+  /* chips */
+  .chips{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+  .chip{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 14px;min-width:110px}
+  .chip .v{font-size:18px;font-weight:700}
+  .chip .k{font-size:10px;color:var(--dim);letter-spacing:.5px}
+  /* layout */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow:hidden}
+  .full{grid-column:1/-1}
+  @media(max-width:980px){.grid{grid-template-columns:1fr}}
+  /* agents */
+  .agents{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:10px}
+  .agent{border:1px solid var(--line);border-left-width:3px;border-radius:8px;padding:9px 11px;background:var(--panel2)}
+  .agent .nm{font-weight:700;font-size:12px}
+  .agent .rl{font-size:10px;color:var(--dim)}
+  .agent .st{font-size:10px;margin-top:4px}
+  .agent .meta{font-size:10px;color:var(--dim);margin-top:4px}
+  .stx{font-weight:700}
+  .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;vertical-align:1px}
+  @keyframes blink{50%{opacity:.35}}
+  .running .dot{animation:blink 1.2s infinite}
+  /* tables */
+  table{width:100%;border-collapse:collapse;font-size:11.5px}
+  th{color:var(--dim);text-align:left;font-weight:600;padding:5px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+  td{padding:6px 8px;border-bottom:1px solid #1a2030;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  .badge{display:inline-block;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:700;white-space:nowrap}
+  .b-ok{background:rgba(74,222,128,.12);color:var(--ok);border:1px solid rgba(74,222,128,.35)}
+  .b-warn{background:rgba(250,204,21,.1);color:var(--warn);border:1px solid rgba(250,204,21,.35)}
+  .b-fail{background:rgba(248,113,113,.1);color:var(--fail);border:1px solid rgba(248,113,113,.35)}
+  .b-info{background:rgba(96,165,250,.1);color:var(--explorer);border:1px solid rgba(96,165,250,.35)}
+  .path{color:var(--router);word-break:break-all}
+  .ev{color:var(--dim)}
+  /* gantt */
+  .gwrap{margin-top:4px}
+  .grow{display:flex;align-items:center;height:26px}
+  .glabel{width:92px;flex:none;font-size:11px;text-align:right;padding-right:10px;color:var(--dim)}
+  .gtrack{position:relative;flex:1;height:14px;background:var(--panel2);border-radius:3px;border:1px solid #1a2030}
+  .gbar{position:absolute;top:1px;height:10px;border-radius:3px;opacity:.9}
+  .gmark{position:absolute;top:-2px;width:9px;height:17px;font-size:10px;line-height:17px;text-align:center;transform:translateX(-4px)}
+  .gaxis{display:flex;margin-left:92px;justify-content:space-between;font-size:9px;color:var(--dim);margin-top:2px}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:10px;color:var(--dim);margin-top:10px}
+  .legend span{display:inline-flex;align-items:center}
+  /* plan steps */
+  .steps{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .step{border:1px solid var(--line);border-radius:6px;padding:4px 9px;font-size:10.5px;color:var(--dim);background:var(--panel2)}
+  .step b{color:var(--fg)}
+  .step.done{border-color:rgba(74,222,128,.4)}
+  .step.done .sid::after{content:' ✓';color:var(--ok)}
+  /* events */
+  .filters{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+  select,input[type=search]{background:var(--panel2);border:1px solid var(--line);color:var(--fg);font-family:var(--mono);font-size:11px;border-radius:6px;padding:4px 8px}
+  .evlist{max-height:420px;overflow-y:auto;border:1px solid #1a2030;border-radius:8px}
+  .evrow{display:flex;gap:10px;padding:4px 10px;border-bottom:1px solid #141928;font-size:11px;align-items:baseline}
+  .evrow:hover{background:#141a29}
+  .evrow .t{color:#4a536b;flex:none;font-size:10px}
+  .evrow .src{flex:none;width:78px;font-weight:700}
+  .evrow .tp{flex:none;width:118px;font-size:10px;color:var(--dim)}
+  .evrow .ds{color:var(--fg);min-width:0;word-break:break-word}
+  .evrow.hl{background:rgba(255,184,108,.06)}
+  .evrow.err{background:rgba(248,113,113,.06)}
+  /* arch svg */
+  .svgwrap{width:100%;overflow-x:auto}
+  svg{display:block;margin:0 auto;max-width:100%}
+  svg text{font-family:var(--mono)}
+  .note{font-size:10.5px;color:var(--dim);margin-top:8px}
+  #drop{position:fixed;inset:0;background:rgba(11,14,20,.85);display:none;align-items:center;justify-content:center;z-index:9;font-size:15px;border:2px dashed var(--main)}
+  .empty{color:var(--dim);padding:20px;text-align:center}
+</style>
+</head>
+<body>
+<header>
+  <h1>⬢ AGENT 执行观测台</h1>
+  <span class="sub">从 JSONL 执行日志重建：谁在跑 · 怎么组织 · 跑到哪 · 结果在哪 · 验了没有</span>
+  <div class="toolbar">
+    <button class="btn" id="btn-sample">载入样例日志</button>
+    <label class="btn" for="file">打开 .jsonl 日志…</label>
+    <input type="file" id="file" accept=".jsonl,.log,.txt" style="display:none">
+  </div>
+</header>
+<div id="taskline"></div>
+<div class="chips" id="chips"></div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>① <span class="q">有多少 Agent 在执行</span> · 各自状态与开销</h2>
+    <div class="agents" id="agents"></div>
+  </div>
+  <div class="panel">
+    <h2>② <span class="q">运行架构</span> · 谁调用谁、决策怎么走</h2>
+    <div class="svgwrap" id="arch"></div>
+    <div class="note" id="arch-note"></div>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="panel full">
+    <h2>③ <span class="q">Subagent 执行进度</span> · 时间线（■ 活跃区间 · ✗ 报错 · ◆ advisor 干预）</h2>
+    <div class="gwrap" id="gantt"></div>
+    <div class="steps" id="steps"></div>
+    <div class="legend">
+      <span><span class="dot" style="background:var(--main)"></span>主会话</span>
+      <span><span class="dot" style="background:var(--router)"></span>路由层(轻决策)</span>
+      <span><span class="dot" style="background:var(--advisor)"></span>advisor(复核)</span>
+      <span><span class="dot" style="background:var(--worker)"></span>worker</span>
+      <span><span class="dot" style="background:var(--explorer)"></span>explorer</span>
+      <span><span class="dot" style="background:var(--researcher)"></span>researcher</span>
+    </div>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="panel full">
+    <h2>④ <span class="q">生成的结果放在哪里</span> + ⑤ <span class="q">是否待验证</span></h2>
+    <table id="results">
+      <thead><tr><th>产物</th><th>类型</th><th>落点路径</th><th>生成者</th><th>发布时间</th><th>验证状态</th><th>验证方式 / 证据</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="note" id="verdict-note"></div>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="panel full">
+    <h2>事件流 · 原始日志（可筛选）</h2>
+    <div class="filters">
+      <select id="f-agent"><option value="">全部 Agent</option></select>
+      <select id="f-type"><option value="">全部事件类型</option></select>
+      <input type="search" id="f-q" placeholder="搜索…">
+    </div>
+    <div class="evlist" id="evlist"></div>
+  </div>
+</div>
+
+<div id="drop">松手加载 JSONL 日志</div>
+
+<script type="application/jsonl" id="sample">
+{"ts":"2026-10-25T09:30:00.000","seq":1,"src":"main","type":"session_start","data":{"task":"把 myapp 的 config 加载改造成分层结构（默认值 → 文件 → 环境变量），并保证向后兼容","policy":{"router":"sharp/cheap · 每次工具调用前做轻决策","advisor":"fable/mid · 仅在 plan 前 / 错误重复时 / 收工前出声"}}}
+{"ts":"2026-10-25T09:30:01.200","seq":2,"src":"main","type":"agent_spawned","data":{"agent":"router","role":"router","label":"JEV · fork 层","model":"sharp(cheap)","task":"拦截每次工具调用，0.5s 内给出轻决策（选文件/选工具/是否重试）"}}
+{"ts":"2026-10-25T09:30:01.400","seq":3,"src":"main","type":"agent_spawned","data":{"agent":"advisor","role":"advisor","label":"FABLE · advisor","model":"fable 5.1","task":"监听全部调用，只在三个时机出声，不写代码"}}
+{"ts":"2026-10-25T09:30:02.000","seq":4,"src":"advisor","type":"advisor_note","data":{"timing":"before_plan","advice":"改造前先补一层旧格式读取的回归测试，否则无法证明向后兼容","intervened":false}}
+{"ts":"2026-10-25T09:30:05.000","seq":5,"src":"main","type":"plan","data":{"steps":[{"id":"S1","desc":"摸清 legacy config 的全部引用点","owner":"explorer"},{"id":"S2","desc":"查 pydantic-settings 分层方案文档","owner":"researcher"},{"id":"S3","desc":"实现分层加载 + 迁移旧格式","owner":"worker"},{"id":"S4","desc":"跑测试验证向后兼容","owner":"main"}]}}
+{"ts":"2026-10-25T09:30:06.000","seq":6,"src":"main","type":"agent_spawned","data":{"agent":"explorer","role":"subagent","label":"explorer","model":"opus · effort medium","task":"扫描 src/ 找出 legacy config 的全部引用点","step":"S1"}}
+{"ts":"2026-10-25T09:30:06.100","seq":7,"src":"main","type":"agent_spawned","data":{"agent":"researcher","role":"subagent","label":"researcher","model":"opus · effort medium","task":"查 pydantic-settings 分层配置官方文档并给结论","step":"S2"}}
+{"ts":"2026-10-25T09:30:06.200","seq":8,"src":"main","type":"agent_spawned","data":{"agent":"worker","role":"subagent","label":"worker","model":"opus · effort medium","task":"实现 config/loader.py 分层加载并迁移调用方","step":"S3"}}
+{"ts":"2026-10-25T09:30:07.500","seq":9,"src":"router","type":"fork_decision","data":{"decision":"which_file","target":"src/config/legacy.py","route":"sharp -> code","elapsed_ms":412,"tokens":1240,"cost":0.0004}}
+{"ts":"2026-10-25T09:30:07.900","seq":10,"src":"explorer","type":"tool_call","data":{"tool":"grep","args":"legacy_config( src/","step":"S1"}}
+{"ts":"2026-10-25T09:30:09.100","seq":11,"src":"explorer","type":"tool_result","data":{"tool":"grep","status":"ok","summary":"命中 14 处引用，分布在 6 个文件","step":"S1"}}
+{"ts":"2026-10-25T09:30:09.800","seq":12,"src":"router","type":"fork_decision","data":{"decision":"which_tool","target":"read -> 逐文件确认上下文","route":"sharp -> code","elapsed_ms":388,"tokens":1105,"cost":0.0004}}
+{"ts":"2026-10-25T09:30:10.200","seq":13,"src":"researcher","type":"tool_call","data":{"tool":"web_fetch","args":"docs.pydantic.dev/latest/concepts/pydantic_settings","step":"S2"}}
+{"ts":"2026-10-25T09:30:13.000","seq":14,"src":"researcher","type":"tool_result","data":{"tool":"web_fetch","status":"ok","summary":"确认 settings_source 链式加载可行，深度合并默认开启","step":"S2"}}
+{"ts":"2026-10-25T09:30:13.500","seq":15,"src":"researcher","type":"subagent_state","data":{"state":"working","note":"结论：用 pydantic-settings 的 sources 链，EnvSettingsSource 放最后覆盖"}}
+{"ts":"2026-10-25T09:30:16.000","seq":16,"src":"router","type":"fork_decision","data":{"decision":"which_file","target":"src/config/loader.py(新建)","route":"sharp -> code","elapsed_ms":455,"tokens":1320,"cost":0.0005}}
+{"ts":"2026-10-25T09:30:16.800","seq":17,"src":"worker","type":"tool_call","data":{"tool":"write","args":"src/config/loader.py","step":"S3"}}
+{"ts":"2026-10-25T09:30:18.900","seq":18,"src":"worker","type":"tool_result","data":{"tool":"write","status":"ok","summary":"分层加载骨架写入，含 defaults/file/env 三级","step":"S3"}}
+{"ts":"2026-10-25T09:30:22.000","seq":19,"src":"router","type":"fork_decision","data":{"decision":"which_file","target":"src/app.py","route":"sharp -> code","elapsed_ms":401,"tokens":1180,"cost":0.0004}}
+{"ts":"2026-10-25T09:30:22.600","seq":20,"src":"worker","type":"tool_call","data":{"tool":"edit","args":"src/app.py 改用 get_settings()","step":"S3"}}
+{"ts":"2026-10-25T09:30:24.100","seq":21,"src":"worker","type":"tool_result","data":{"tool":"edit","status":"ok","summary":"app.py 迁移完成","step":"S3"}}
+{"ts":"2026-10-25T09:30:27.000","seq":22,"src":"worker","type":"tool_call","data":{"tool":"bash","args":"python -m myapp --check-config","step":"S3"}}
+{"ts":"2026-10-25T09:30:28.500","seq":23,"src":"worker","type":"error","data":{"tool":"bash","error":"PermissionError: 'etc/config.json' read-only volume","attempt":1,"same_error_x":1}}
+{"ts":"2026-10-25T09:30:29.000","seq":24,"src":"router","type":"fork_decision","data":{"decision":"retry_stop","target":"retry once","route":"sharp -> code","elapsed_ms":372,"tokens":980,"cost":0.0003}}
+{"ts":"2026-10-25T09:30:29.500","seq":25,"src":"worker","type":"retry","data":{"tool":"bash","args":"python -m myapp --check-config","attempt":2,"reason":"router: retry once"}}
+{"ts":"2026-10-25T09:30:31.000","seq":26,"src":"worker","type":"error","data":{"tool":"bash","error":"PermissionError: 'etc/config.json' read-only volume","attempt":2,"same_error_x":2}}
+{"ts":"2026-10-25T09:30:31.300","seq":27,"src":"advisor","type":"advisor_note","data":{"timing":"error_again","advice":"同一错误第二次出现，位置本身有问题——不要重试，改用临时文件 + 原子替换","intervened":true}}
+{"ts":"2026-10-25T09:30:31.800","seq":28,"src":"router","type":"fork_decision","data":{"decision":"retry_stop","target":"stop retrying, change approach","route":"split -> opus","elapsed_ms":520,"tokens":1450,"cost":0.0006}}
+{"ts":"2026-10-25T09:30:33.000","seq":29,"src":"worker","type":"tool_call","data":{"tool":"bash","args":"写 tmp 文件 + os.replace 原子替换","step":"S3"}}
+{"ts":"2026-10-25T09:30:35.200","seq":30,"src":"worker","type":"tool_result","data":{"tool":"bash","status":"ok","summary":"原子替换成功，check-config 通过","step":"S3"}}
+{"ts":"2026-10-25T09:30:38.000","seq":31,"src":"explorer","type":"result_emitted","data":{"kind":"report","path":"reports/legacy-config-refs.md","created_by":"explorer","summary":"14 处引用清单 + 迁移优先级"}}
+{"ts":"2026-10-25T09:30:38.200","seq":32,"src":"explorer","type":"subagent_state","data":{"state":"done","note":"引用点全部标注，其中 2 处在已废弃模块内"}}
+{"ts":"2026-10-25T09:30:40.000","seq":33,"src":"worker","type":"result_emitted","data":{"kind":"code","path":"src/config/loader.py","created_by":"worker","summary":"分层加载实现（defaults → file → env）"}}
+{"ts":"2026-10-25T09:30:40.500","seq":34,"src":"worker","type":"result_emitted","data":{"kind":"code","path":"src/app.py","created_by":"worker","summary":"调用方迁移到 get_settings()"}}
+{"ts":"2026-10-25T09:30:41.000","seq":35,"src":"worker","type":"result_emitted","data":{"kind":"code","path":"tests/test_config_layering.py","created_by":"worker","summary":"向后兼容回归测试 6 例"}}
+{"ts":"2026-10-25T09:30:41.500","seq":36,"src":"worker","type":"subagent_state","data":{"state":"done","note":"实现 + 迁移 + 测试全部完成"}}
+{"ts":"2026-10-25T09:30:42.000","seq":37,"src":"researcher","type":"result_emitted","data":{"kind":"research","path":"notes/pydantic-settings-layering.md","created_by":"researcher","summary":"sources 链分层方案结论（基于文档 2.7）"}}
+{"ts":"2026-10-25T09:30:42.200","seq":38,"src":"researcher","type":"subagent_state","data":{"state":"done","note":"结论已发布，未做版本核对"}}
+{"ts":"2026-10-25T09:30:45.000","seq":39,"src":"main","type":"verification","data":{"target":"src/config/loader.py","method":"pytest tests/ -q","verdict":"pass","evidence":"34 passed in 2.1s（含 6 例向后兼容回归）"}}
+{"ts":"2026-10-25T09:30:47.000","seq":40,"src":"main","type":"verification","data":{"target":"src/app.py","method":"python -m myapp --check-config","verdict":"pass","evidence":"启动自检通过，env 覆盖生效"}}
+{"ts":"2026-10-25T09:30:48.000","seq":41,"src":"advisor","type":"advisor_note","data":{"timing":"before_done","advice":"reports/legacy-config-refs.md 里提到 2 处废弃模块引用未处理，确认是有意留白还是遗漏","intervened":true}}
+{"ts":"2026-10-25T09:30:50.000","seq":42,"src":"main","type":"merge","data":{"from":["worker","explorer","researcher"],"note":"三路结论合并，废弃模块引用确认为有意留白（随模块一并删除）"}}
+{"ts":"2026-10-25T09:31:04.000","seq":43,"src":"main","type":"verification","data":{"target":"reports/legacy-config-refs.md","method":"人工抽查 3/14 引用点","verdict":"pass","evidence":"抽查位置与行号一致"}}
+{"ts":"2026-10-25T09:31:05.000","seq":44,"src":"main","type":"verification","data":{"target":"notes/pydantic-settings-layering.md","method":"对照项目锁定的 pydantic-settings 2.4 复核","verdict":"fail","evidence":"文档基于 2.7，项目锁的是 2.4，InitSettingsSource 参数名不同——结论需按 2.4 修订后重验"}}
+{"ts":"2026-10-25T09:31:07.000","seq":45,"src":"main","type":"fork_summary","data":{"forks":6,"tokens":52400,"cost":0.0161,"avg_elapsed_ms":425}}
+{"ts":"2026-10-25T09:31:07.500","seq":46,"src":"advisor","type":"advisor_summary","data":{"calls":3,"tokens":643000,"note":"3 次出声：plan 前建议补回归测试 / 错误重复时干预 1 次 / 收工前复核干预 1 次"}}
+{"ts":"2026-10-25T09:31:08.000","seq":47,"src":"main","type":"session_summary","data":{"forks":6,"router_cost":0.0161,"advisor_cost":0.0089,"subagents_cost":0.1172,"total_cost":0.142,"elapsed_s":68,"results_total":5,"results_verified_pass":3,"results_verified_fail":1,"results_pending":1,"next":"researcher 结论按 pydantic-settings 2.4 修订后重验"}}
+{"ts":"2026-10-25T09:31:08.500","seq":48,"src":"main","type":"agent_finished","data":{"agent":"router","status":"done"}}
+{"ts":"2026-10-25T09:31:08.600","seq":49,"src":"main","type":"agent_finished","data":{"agent":"advisor","status":"done"}}
+{"ts":"2026-10-25T09:31:08.700","seq":50,"src":"main","type":"agent_finished","data":{"agent":"main","status":"shipped"}}
+</script>
+
+<script>
+const COLORS = {main:'var(--main)',router:'var(--router)',advisor:'var(--advisor)',worker:'var(--worker)',explorer:'var(--explorer)',researcher:'var(--researcher)'};
+const HEX = {main:'#c792ea',router:'#4dd0e1',advisor:'#ffb86c',worker:'#a3e635',explorer:'#60a5fa',researcher:'#f472b6'};
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const tsMs = e => Date.parse(e.ts);
+const hhmmss = ms => new Date(ms).toLocaleTimeString('zh-CN',{hour12:false});
+const fmtTok = n => n>=1e6 ? (n/1e6).toFixed(1)+'M' : n>=1e3 ? (n/1e3).toFixed(1)+'k' : String(n??0);
+
+let events = [];
+
+function parseJSONL(text){
+  return text.split('\n').map(l=>l.trim()).filter(l=>l.startsWith('{')).map(l=>{try{return JSON.parse(l)}catch(e){return null}}).filter(Boolean);
+}
+
+/* ---- derive model from events ---- */
+function buildModel(ev){
+  const agents = {};
+  const ensure = (id,extra) => {
+    if(!agents[id]) agents[id] = {id, status:'running', events:[], forks:0, tokens:0, cost:0, errors:0, interventions:0, touched:new Set()};
+    if(extra) Object.assign(agents[id], extra);
+    return agents[id];
+  };
+  const plan = {steps:[]};
+  const results = [];      // result_emitted
+  const verifs = [];       // verification
+  let summary=null, forkSummary=null, advisorSummary=null, task='', policy=null;
+
+  ensure('main',{role:'main',label:'主会话',model:'opus high · ctx 1M',task:'规划 + 拍板'});
+  for(const e of ev){
+    const d = e.data||{};
+    if(e.type==='session_start'){ task=d.task||''; policy=d.policy||null; }
+    if(e.type==='agent_spawned'){ ensure(d.agent,{role:d.role,label:d.label,model:d.model,task:d.task,step:d.step,spawnedAt:tsMs(e)}); }
+    if(e.type==='plan'){ plan.steps = d.steps||[]; }
+    if(e.type==='fork_decision'){ const a=ensure(e.src); a.forks++; a.tokens+=d.tokens||0; a.cost+=d.cost||0; a.lastDecision=d.decision; }
+    if(e.type==='tool_call' && d.args) agents[e.src]?.touched.add(String(d.args).split(' ')[0]);
+    if(e.type==='error'){ agents[e.src]&&(agents[e.src].errors++); }
+    if(e.type==='advisor_note' && d.intervened){ agents.advisor && agents.advisor.interventions++; }
+    if(e.type==='subagent_state'){ ensure(e.src,{state:d.state}); if(agents[e.src]) agents[e.src].state=d.state, agents[e.src].stateNote=d.note; }
+    if(e.type==='result_emitted'){ results.push({ts:tsMs(e),...d}); }
+    if(e.type==='verification'){ verifs.push({ts:tsMs(e),...d}); }
+    if(e.type==='fork_summary'){ forkSummary=d; }
+    if(e.type==='advisor_summary'){ advisorSummary=d; if(agents.advisor){agents.advisor.tokens=d.tokens||0; agents.advisor.calls=d.calls;} }
+    if(e.type==='session_summary'){ summary=d; }
+    if(e.type==='agent_finished'){ ensure(d.agent,{status:d.status||'done',finishedAt:tsMs(e)}); }
+    agents[e.src] && agents[e.src].events.push(e);
+  }
+  // subagent cost share from summary
+  const subs = Object.values(agents).filter(a=>a.role==='subagent');
+  if(summary && subs.length) subs.forEach(a=>a.cost=(summary.subagents_cost||0)/subs.length);
+
+  // merge verification into results (latest verdict per target)
+  const rows = results.map(r=>{
+    const vs = verifs.filter(v=>v.target===r.path);
+    const last = vs[vs.length-1];
+    return {...r, verif:last};
+  });
+
+  // activity intervals (merge gaps < 8s)
+  for(const a of Object.values(agents)){
+    const pts = a.events.map(tsMs).sort((x,y)=>x-y);
+    const iv=[];
+    for(const t of pts){
+      if(iv.length && t-iv[iv.length-1][1] < 8000) iv[iv.length-1][1]=t;
+      else iv.push([t,t]);
+    }
+    a.intervals = iv;
+  }
+  return {agents, plan, results:rows, verifs, summary, forkSummary, advisorSummary, task, policy,
+          span:[Math.min(...ev.map(tsMs)), Math.max(...ev.map(tsMs))], ev};
+}
+
+/* ---- renderers ---- */
+function render(m){
+  // header + chips
+  document.getElementById('taskline').innerHTML = taskline(m);
+  const t0=m.span[0], t1=m.span[1], durS = Math.round((t1-t0)/1000);
+  const agentN = Object.keys(m.agents).length;
+  const forks = m.forkSummary?.forks ?? Object.values(m.agents).reduce((s,a)=>s+a.forks,0);
+  const avgMs = m.forkSummary?.avg_elapsed_ms ?? '—';
+  const cost = m.summary?.total_cost ?? Object.values(m.agents).reduce((s,a)=>s+a.cost,0).toFixed(4);
+  const nPass = m.results.filter(r=>r.verif?.verdict==='pass').length;
+  const nFail = m.results.filter(r=>r.verif?.verdict==='fail').length;
+  const nPend = m.results.filter(r=>!r.verif).length;
+  document.getElementById('chips').innerHTML = [
+    chip(agentN,'Agent 总数'), chip(forks,'fork 决策次数'), chip(avgMs+'ms','平均决策耗时'),
+    chip('$'+cost,'总成本'), chip(durS+'s','总耗时'),
+    chip(nPass+'/'+m.results.length,'已验证通过'),
+    chip('<span style="color:var(--warn)">'+nPend+'</span> 待验证 · <span style="color:var(--fail)">'+nFail+'</span> 未通过','结果状态'),
+  ].join('');
+
+  // ① agents
+  document.getElementById('agents').innerHTML = Object.values(m.agents).map(a=>{
+    const stt = a.status!=='running' ? a.status : (a.state||'running');   // subagent_state 也作为完成信号
+    const st = stt==='running' || stt==='working' ? '<span class="dot"></span><span class="stx" style="color:var(--ok)">RUNNING</span>'
+      : stt==='shipped' ? '<span class="stx" style="color:var(--main)">✓ SHIPPED</span>'
+      : stt==='done' ? '<span class="stx" style="color:var(--ok)">✓ DONE</span>'
+      : '<span class="stx" style="color:var(--dim)">■ '+esc(String(stt).toUpperCase())+'</span>';
+    return `<div class="agent" style="border-left-color:${HEX[a.id]||'#888'}">
+      <div class="nm" style="color:${HEX[a.id]}">${esc(a.label||a.id)}</div>
+      <div class="rl">${esc(a.role)} · ${esc(a.model||'')}</div>
+      <div class="st ${a.status==='running'?'running':''}">${st}${a.step?` · 步骤 <b>${esc(a.step)}</b>`:''}</div>
+      <div class="meta">${esc(a.task||'')}</div>
+      <div class="meta">${a.forks?`fork ${a.forks} 次 · `:''}${a.tokens?fmtTok(a.tokens)+' tok · ':''}${a.cost?'$'+a.cost.toFixed(4)+' · ':''}${a.errors?`<span style="color:var(--fail)">✗${a.errors}</span> `:''}${a.interventions?`<span style="color:var(--advisor)">◆干预${a.interventions}</span>`:''}</div>
+    </div>`;
+  }).join('');
+
+  // ② architecture
+  document.getElementById('arch').innerHTML = archSVG(m);
+  document.getElementById('arch-note').innerHTML = m.policy
+    ? '路由策略：' + esc(m.policy.router) + ' ｜ ' + esc(m.policy.advisor) : '';
+
+  // ③ gantt
+  document.getElementById('gantt').innerHTML = gantt(m);
+  const ownerDone = id => { const a=m.agents[id]; return a && a.status!=='running'; };
+  document.getElementById('steps').innerHTML = m.plan.steps.map(s=>{
+    const done = ownerDone(s.owner);
+    return `<div class="step ${done?'done':''}"><span class="sid"><b>${esc(s.id)}</b></span> ${esc(s.desc)} <span style="color:${HEX[s.owner]||'#888'}">@${esc(s.owner)}</span></div>`;
+  }).join('');
+
+  // ④⑤ results
+  const tb = document.querySelector('#results tbody');
+  tb.innerHTML = m.results.length ? m.results.map(r=>{
+    const badge = !r.verif ? '<span class="badge b-warn">⏳ 待验证</span>'
+      : r.verif.verdict==='pass' ? '<span class="badge b-ok">✓ 已验证通过</span>'
+      : '<span class="badge b-fail">✗ 验证未通过</span>';
+    const v = r.verif ? `<div>${esc(r.verif.method)}</div><div class="ev">${esc(r.verif.evidence)}</div>` : '<div class="ev">尚无 verification 事件</div>';
+    return `<tr><td>${esc(r.summary)}</td><td><span class="badge b-info">${esc(r.kind)}</span></td>
+      <td class="path">${esc(r.path)}</td><td style="color:${HEX[r.created_by]}">${esc(r.created_by)}</td>
+      <td class="ev">${hhmmss(r.ts)}</td><td>${badge}</td><td>${v}</td></tr>`;
+  }).join('') : '<tr><td colspan="7" class="empty">日志中没有 result_emitted 事件</td></tr>';
+  document.getElementById('verdict-note').innerHTML = m.summary?.next
+    ? '⚠ 收工遗留：<b style="color:var(--warn)">' + esc(m.summary.next) + '</b>（待验证/未通过的结果在复核前不应视为可交付）' : '';
+
+  // event stream + filters
+  const fA=document.getElementById('f-agent'), fT=document.getElementById('f-type');
+  fA.innerHTML = '<option value="">全部 Agent</option>' + Object.keys(m.agents).map(a=>`<option>${esc(a)}</option>`).join('');
+  const types=[...new Set(m.ev.map(e=>e.type))];
+  fT.innerHTML = '<option value="">全部事件类型</option>' + types.map(t=>`<option>${esc(t)}</option>`).join('');
+  renderEvents(m);
+}
+
+function renderEvents(m){
+  const a=document.getElementById('f-agent').value, t=document.getElementById('f-type').value,
+        q=document.getElementById('f-q').value.toLowerCase();
+  const rows = m.ev.filter(e=>(!a||e.src===a)&&(!t||e.type===t))
+    .filter(e=>!q||JSON.stringify(e).toLowerCase().includes(q))
+    .map(e=>{
+      const d=e.data||{};
+      let ds = d.task||d.advice||d.summary||d.note||d.error||d.decision||d.tool||d.state||d.verdict||'';
+      if(d.args) ds = (d.tool?d.tool+' ':'') + d.args;
+      if(d.target && e.type==='fork_decision') ds = d.decision+' → '+d.target+' ('+d.route+', '+d.elapsed_ms+'ms)';
+      if(d.target && e.type==='verification') ds = d.target+' · '+d.method+' → '+d.verdict;
+      if(d.path) ds = d.path+' — '+(d.summary||'');
+      const cls = e.type==='error'||d.verdict==='fail' ? 'evrow err' : (e.type==='advisor_note'&&d.intervened)||e.type==='retry' ? 'evrow hl' : 'evrow';
+      return `<div class="${cls}"><span class="t">${hhmmss(tsMs(e))}</span><span class="src" style="color:${HEX[e.src]||'#888'}">${esc(e.src)}</span><span class="tp">${esc(e.type)}</span><span class="ds">${esc(ds)}</span></div>`;
+    }).join('');
+  document.getElementById('evlist').innerHTML = rows || '<div class="empty">无匹配事件</div>';
+}
+
+function chip(v,k){ return `<div class="chip"><div class="v">${v}</div><div class="k">${esc(k)}</div></div>`; }
+function taskline(m){
+  const s=m.summary;
+  return `<b>任务</b>：${esc(m.task)} ｜ 结果：${s?`${s.results_total} 个产物 · ${s.results_verified_pass} 通过 · ${s.results_verified_fail} 未通过 · ${s.results_pending} 待验证`:'—'}`;
+}
+
+function gantt(m){
+  const [t0,t1]=m.span, W=t1-t0||1;
+  const order=['main','router','advisor','worker','explorer','researcher'].filter(id=>m.agents[id]);
+  const rows = order.concat(Object.keys(m.agents).filter(id=>!order.includes(id)));
+  return rows.map(id=>{
+    const a=m.agents[id];
+    const bars=(a.intervals||[]).map(([s,e])=>{
+      const l=(s-t0)/W*100, w=Math.max((e-s)/W*100, 1.2);
+      return `<div class="gbar" style="left:${l}%;width:${w}%;background:${HEX[id]||'#888'}" title="${esc(id)} ${hhmmss(s)}–${hhmmss(e)}"></div>`;
+    }).join('');
+    const marks=a.events.filter(e=>e.type==='error'||(e.type==='advisor_note'&&e.data?.intervened)).map(e=>{
+      const l=(tsMs(e)-t0)/W*100;
+      const sym=e.type==='error'?'✗':'◆', c=e.type==='error'?'var(--fail)':'var(--advisor)';
+      return `<div class="gmark" style="left:${l}%;color:${c}" title="${esc(JSON.stringify(e.data).slice(0,120))}">${sym}</div>`;
+    }).join('');
+    return `<div class="grow"><div class="glabel" style="color:${HEX[id]||'#888'}">${esc(id)}</div><div class="gtrack">${bars}${marks}</div></div>`;
+  }).join('') + `<div class="gaxis"><span>${hhmmss(t0)}</span><span>${hhmmss(t0+(t1-t0)/4)}</span><span>${hhmmss(t0+(t1-t0)/2)}</span><span>${hhmmss(t0+(t1-t0)*3/4)}</span><span>${hhmmss(t1)}</span></div>`;
+}
+
+function archSVG(m){
+  const A=m.agents;
+  const forkN = m.forkSummary?.forks ?? A.router?.forks ?? 0;
+  const box=(x,y,w,h,id,title,sub)=>{
+    const c=HEX[id]||'#888';
+    return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="8" fill="#0e121b" stroke="${c}" stroke-width="1.2"/>
+      <text x="${x+w/2}" y="${y+19}" text-anchor="middle" fill="${c}" font-size="12" font-weight="700">${esc(title)}</text>
+      <text x="${x+w/2}" y="${y+35}" text-anchor="middle" fill="#6b768f" font-size="9.5">${esc(sub)}</text>`;
+  };
+  const edge=(x1,y1,x2,y2,label,dashed,color)=>{
+    const mx=(x1+x2)/2, my=(y1+y2)/2;
+    return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color||'#3a4358'}" stroke-width="1" ${dashed?'stroke-dasharray="3 3"':''} marker-end="url(#arr)"/>
+      ${label?`<text x="${mx}" y="${my-4}" text-anchor="middle" fill="#6b768f" font-size="9">${esc(label)}</text>`:''}`;
+  };
+  const subs = Object.values(A).filter(a=>a.role==='subagent');
+  const subW = Math.min(150, 480/Math.max(subs.length,1));
+  const totalW = 520;
+  let svg = `<svg viewBox="0 0 ${totalW} 400" width="${totalW}">
+    <defs><marker id="arr" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L8,4L0,8z" fill="#3a4358"/></marker></defs>`;
+  // layer 1: main
+  svg += box(150,10,220,44,'main','Opus · 主会话','plan + 拍板 · effort high');
+  // layer 2: advisor left, router right
+  svg += box(20,90,200,44,'advisor','FABLE · advisor','只听不写 · 3 个时机出声');
+  svg += box(300,90,200,44,'router','JEV · fork 路由','cheap · <0.5s');
+  // edges main<->advisor / main<->router
+  svg += edge(160,54,80,90,'监听全部调用',false,'#ffb86c');
+  svg += edge(80,134,180,158,'◆ 干预',true,'#ffb86c');
+  svg += edge(360,54,420,90,'每次工具调用',false,'#4dd0e1');
+  svg += edge(430,134,380,158,forkN+' 次轻决策',false,'#4dd0e1');
+  svg += edge(300,112,220,112,'拿不准→升级 opus',true,'#c792ea');
+  // layer 3: subagents
+  const sy=210;
+  subs.forEach((a,i)=>{
+    const x = 20 + i*(subW+14) ;
+    svg += box(x,sy,subW,44,a.id,esc(a.label||a.id),'step '+(a.step||'—'));
+    svg += edge(260,158, x+subW/2, sy,'spawn',false,HEX[a.id]);
+    svg += edge(x+subW/2, sy, 290,158,'',true,'#3a4358');
+  });
+  // layer 4: results
+  const ry=320;
+  svg += `<rect x="${totalW/2-160}" y="${ry}" width="320" height="44" rx="8" fill="none" stroke="#4ade80" stroke-dasharray="4 3"/>
+    <text x="${totalW/2}" y="${ry+18}" text-anchor="middle" fill="#4ade80" font-size="11" font-weight="700">产物区 · ${m.results.length} 个结果</text>
+    <text x="${totalW/2}" y="${ry+33}" text-anchor="middle" fill="#6b768f" font-size="9">${esc(m.results.map(r=>r.path.split('/').pop()).join(' · ').slice(0,70))}</text>`;
+  svg += edge(260, sy+44+ (subs.length?0:0), 260, ry-2, '', false, '#3a4358');
+  subs.forEach((a,i)=>{ const x=20+i*(subW+14); svg += edge(x+subW/2, sy+44, totalW/2-60+i*60, ry, 'emit', false, '#4ade80'); });
+  svg += edge(150, 40, 60, ry+10, '验证 ✓/✗', true, '#facc15');
+  svg += '</svg>';
+  return svg;
+}
+
+/* ---- io ---- */
+function loadText(text){
+  const ev = parseJSONL(text);
+  if(!ev.length){ alert('日志为空或不是 JSONL 格式'); return; }
+  events = ev;
+  render(buildModel(ev));
+}
+document.getElementById('btn-sample').onclick = () => loadText(document.getElementById('sample').textContent);
+document.getElementById('file').onchange = e => { const f=e.target.files[0]; if(f) f.readThen = f.text().then(loadText); };
+window.addEventListener('dragover',e=>{e.preventDefault();document.getElementById('drop').style.display='flex'});
+window.addEventListener('dragleave',e=>{if(!e.relatedTarget)document.getElementById('drop').style.display='none'});
+window.addEventListener('drop',e=>{e.preventDefault();document.getElementById('drop').style.display='none';const f=e.dataTransfer.files[0];if(f)f.text().then(loadText)});
+['f-agent','f-type'].forEach(id=>document.getElementById(id).addEventListener('change',()=>{if(events.length)renderEvents(buildModel(events))}));
+document.getElementById('f-q').addEventListener('input',()=>{if(events.length)renderEvents(buildModel(events))});
+// boot: file:// 直接读内嵌副本，http(s) 下再尝试 fetch 真实样例
+if (location.protocol === 'file:') loadText(document.getElementById('sample').textContent);
+else fetch('data/sample-session.jsonl').then(r=>r.ok?r.text():null).then(t=>loadText(t||document.getElementById('sample').textContent)).catch(()=>loadText(document.getElementById('sample').textContent));
+</script>
+</body>
+</html>

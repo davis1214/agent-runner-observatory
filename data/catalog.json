@@ -1,0 +1,215 @@
+{
+  "generatedAt": "2026-10-25T10:30:00.000+08:00",
+  "agents": [
+    {
+      "id": "qoder-cn",
+      "name": "qoder-cn",
+      "vendor": "Qoder",
+      "model": "opus 4.6",
+      "accent": "#c792ea",
+      "desc": "本地旗舰模型，擅长长任务与多文件重构"
+    },
+    {
+      "id": "codex",
+      "name": "codex",
+      "vendor": "OpenAI",
+      "model": "gpt-5.1-codex",
+      "accent": "#4dd0e1",
+      "desc": "CLI 与基础设施任务的默认执行器"
+    },
+    {
+      "id": "workbuddy",
+      "name": "workbuddy",
+      "vendor": "WorkBuddy",
+      "model": "sonnet 4.6",
+      "accent": "#ffb86c",
+      "desc": "文档、发布与日常运维的执行助手"
+    },
+    {
+      "id": "trae-cn",
+      "name": "trae-cn",
+      "vendor": "Trae",
+      "model": "doubao-seed-code",
+      "accent": "#f472b6",
+      "desc": "Trae CN 端到端交付线，前端与接口联调见长"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "qcn-config-layering",
+      "agent": "qoder-cn",
+      "title": "重构 config 分层加载",
+      "repo": "myapp",
+      "status": "completed",
+      "model": "opus 4.6 · high",
+      "startedAt": "2026-10-25T09:30:00+08:00",
+      "cost": 0.142,
+      "tokens": 812000
+    },
+    {
+      "id": "qcn-api-pagination",
+      "agent": "qoder-cn",
+      "title": "API 分页统一改造",
+      "repo": "order-service",
+      "status": "completed",
+      "model": "sonnet 4.5",
+      "startedAt": "2026-10-24T16:20:00+08:00",
+      "cost": 0.38,
+      "tokens": 1520000
+    },
+    {
+      "id": "qcn-flaky-test",
+      "agent": "qoder-cn",
+      "title": "修复 CI flaky 测试",
+      "repo": "payment-core",
+      "status": "running",
+      "model": "opus 4.6 · high",
+      "startedAt": "2026-10-25T10:02:00+08:00",
+      "cost": 0.09,
+      "tokens": 356000
+    },
+    {
+      "id": "qcn-db-migration",
+      "agent": "qoder-cn",
+      "title": "orders 表迁移脚本",
+      "repo": "order-service",
+      "status": "failed",
+      "model": "opus 4.6",
+      "startedAt": "2026-10-23T14:05:00+08:00",
+      "cost": 0.21,
+      "tokens": 640000
+    },
+    {
+      "id": "cdx-cli-flags",
+      "agent": "codex",
+      "title": "CLI flag 重构",
+      "repo": "devctl",
+      "status": "completed",
+      "model": "gpt-5.1-codex",
+      "startedAt": "2026-10-24T11:00:00+08:00",
+      "cost": 0.27,
+      "tokens": 980000
+    },
+    {
+      "id": "cdx-webhook-retry",
+      "agent": "codex",
+      "title": "Webhook 重试与幂等",
+      "repo": "notify-hub",
+      "status": "completed",
+      "model": "gpt-5.1-codex",
+      "startedAt": "2026-10-24T09:12:00+08:00",
+      "cost": 0.33,
+      "tokens": 1100000
+    },
+    {
+      "id": "cdx-monorepo-cache",
+      "agent": "codex",
+      "title": "Monorepo 构建缓存",
+      "repo": "build-infra",
+      "status": "running",
+      "model": "gpt-5.1-codex",
+      "startedAt": "2026-10-25T10:10:00+08:00",
+      "cost": 0.16,
+      "tokens": 720000
+    },
+    {
+      "id": "cdx-perf-regression",
+      "agent": "codex",
+      "title": "P99 性能回归排查",
+      "repo": "gateway",
+      "status": "canceled",
+      "model": "gpt-5.1-codex",
+      "startedAt": "2026-10-23T18:40:00+08:00",
+      "cost": 0.07,
+      "tokens": 280000
+    },
+    {
+      "id": "wb-docs-migration",
+      "agent": "workbuddy",
+      "title": "文档站迁移 Docusaurus",
+      "repo": "docs-site",
+      "status": "completed",
+      "model": "sonnet 4.6",
+      "startedAt": "2026-10-22T15:30:00+08:00",
+      "cost": 0.19,
+      "tokens": 690000
+    },
+    {
+      "id": "wb-release-notes",
+      "agent": "workbuddy",
+      "title": "发布说明自动化",
+      "repo": "workbuddy-app",
+      "status": "completed",
+      "model": "sonnet 4.6",
+      "startedAt": "2026-10-24T20:15:00+08:00",
+      "cost": 0.12,
+      "tokens": 410000
+    },
+    {
+      "id": "wb-dep-audit",
+      "agent": "workbuddy",
+      "title": "依赖安全审计",
+      "repo": "workbuddy-app",
+      "status": "failed",
+      "model": "sonnet 4.6",
+      "startedAt": "2026-10-23T10:20:00+08:00",
+      "cost": 0.24,
+      "tokens": 760000
+    },
+    {
+      "id": "wb-oncall-runbook",
+      "agent": "workbuddy",
+      "title": "生成 oncall 手册",
+      "repo": "ops-runbooks",
+      "status": "running",
+      "model": "sonnet 4.6",
+      "startedAt": "2026-10-25T10:18:00+08:00",
+      "cost": 0.03,
+      "tokens": 120000
+    },
+    {
+      "id": "trae-api-contract",
+      "agent": "trae-cn",
+      "title": "订单 API 契约生成",
+      "repo": "trae-service",
+      "status": "completed",
+      "model": "doubao-seed-code",
+      "startedAt": "2026-10-24T13:10:00+08:00",
+      "cost": 0.185,
+      "tokens": 690000
+    },
+    {
+      "id": "trae-style-migration",
+      "agent": "trae-cn",
+      "title": "设计令牌迁移",
+      "repo": "trae-web",
+      "status": "running",
+      "model": "doubao-seed-code",
+      "startedAt": "2026-10-25T10:24:00+08:00",
+      "cost": 0.06,
+      "tokens": 240000
+    },
+    {
+      "id": "trae-e2e-coverage",
+      "agent": "trae-cn",
+      "title": "补齐 checkout E2E 覆盖",
+      "repo": "trae-web",
+      "status": "failed",
+      "model": "doubao-seed-code",
+      "startedAt": "2026-10-23T16:00:00+08:00",
+      "cost": 0.23,
+      "tokens": 810000
+    },
+    {
+      "id": "trae-doc-sync",
+      "agent": "trae-cn",
+      "title": "API 变更文档同步",
+      "repo": "trae-docs",
+      "status": "completed",
+      "model": "doubao-seed-code",
+      "startedAt": "2026-10-22T11:40:00+08:00",
+      "cost": 0.09,
+      "tokens": 320000
+    }
+  ]
+}

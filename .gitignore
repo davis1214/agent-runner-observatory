@@ -1,0 +1,11 @@
+# 本地运行产物（含本机服务日志与截图，一律不进仓库）
+.run/
+
+# 依赖与系统文件
+node_modules/
+.DS_Store
+
+# 日志与临时文件
+*.log
+*.pid
+nohup.out
