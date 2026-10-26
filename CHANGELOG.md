@@ -2,6 +2,15 @@
 
 版本号的唯一事实源是 `assets/version.js` 的 `releases[0].version`，顶栏 `v…` 徽标与版本弹层都读它。发版时两处一起改：`assets/version.js` 加一条 releases，本文件加同名条目。`tests/acceptance.mjs` 会断言顶栏版本号与 `releases[0]` 一致。
 
+## v5.0.2 — 2026-10-26
+
+假「运行中」修复 + 缓存加固。
+
+- 修复 Codex 分类页假「运行中」：桌面端为 auto-review 开的附属线程壳（无用户活动、无产物）不再被当成独立任务，eos-index 从 5 个假运行中收敛到 1 个真实执行会话。
+- 修复任务标题时间显示：Codex / Claude 的兜底标题从 UTC 改为本地时间（原来差 8 小时）。
+- 缓存加固：页面与静态资源响应改发 `Cache-Control: no-store`（原 no-cache 且无验证器），长时间开着的旧标签页不再停留在老 UI——曾导致顶栏版本号「消失」的根因之一；live-http 验收新增 2 条缓存头断言。
+- v6 交互提案 demo（`prototype/interaction-v6/`）顶栏补版本号标记。
+
 ## v5.0.1 — 2026-10-26
 
 README 改版 + 演示截图。无产品功能变更。
