@@ -1,6 +1,42 @@
 # Agent Runner · 执行监控台
 
-**把本机所有 Agent 的执行任务收进同一条看板的开源小工具。** 无构建、纯静态前端（原生 HTML/CSS/JS，零依赖、零打包），Node 只做本地数据桥接。两种打开方式：双击 `index.html` 用内置演示数据离线浏览；或 `node scripts/serve.mjs` 起本地服务，只读采集本机 Qoder CN / Codex / WorkBuddy / Trae CN / Claude Code 五个 Agent 的真实会话。MIT 许可，见 [LICENSE](LICENSE)。
+**把本机所有 AI Agent 的执行任务收进同一条看板的开源小工具。** 无构建、纯静态前端（原生 HTML/CSS/JS，零依赖、零打包），Node 只做本地数据桥接，只读采集本机 Qoder CN / Codex / WorkBuddy / Trae CN / Claude Code 五个 Agent 的真实会话。MIT 许可，见 [LICENSE](LICENSE)。
+
+![全部任务](assets/screenshot-all-tasks.png)
+
+![任务详情](assets/screenshot-task-detail.png)
+
+![任务看板](assets/screenshot-board.png)
+
+## 它解决什么问题
+
+同时跑两三个 Agent 的人，都遇到过这些：
+
+1. **任务是黑盒**。Agent 在终端里跑，你只看到滚动的日志；切个窗口回来，不知道它做到哪一步、是不是已经卡住、有没有偷偷失败重试。
+2. **任务会漏**。多开几个项目、几个 Agent 之后，"上周让某个 Agent 改的那个事"散落在各自的会话记录里，没有一个地方能列出全部待办和进行中的任务。
+3. **提示词不可见**。会话记录里真正驱动 Agent 的是那段提示词，但绝大多数观测工具只给你看 token 用量和上下文百分比——出了问题想复盘"它到底被要求了什么"，得回去翻 JSONL。
+4. **产物没人验**。Agent 说"完成了"，产物在哪、有没有验证、验证结论是通过还是待验证？多数工具到"任务完成"就结束了，验收状态没有面板承载。
+
+Agent Runner 把这些收进一个本机页面：全部任务一条列表，按 Agent 或工作区切换；点进任意任务，7 个面板回答谁在跑、架构怎样、每个 Agent 收到什么指令、用过什么工具、进度如何、产物落在哪、是否待验证。
+
+## 为什么不是又一个 Claude Code 面板
+
+同类项目（claude-hud、abtop、claude-task-viewer、Claude-Code-Agent-Monitor、AgentSight 等）几乎都锁死单一 Agent 产品。本项目占三个空位：
+
+| | 同类工具 | 本项目 |
+|---|---|---|
+| 覆盖面 | 90% 只支持 Claude Code 一家 | 5 个异构 Agent（Qoder CN / Codex / WorkBuddy / Trae CN / Claude Code）各有只读采集器，不改被观测方任何配置 |
+| 提示词 | 刻意不展示（只给上下文百分比 / 任务标题） | 一等公民：main 与每个 subagent 的提示词逐条摊开，日志没记录就明说「未记录」，不按标题补写 |
+| 验证闭环 | 到"任务完成"为止 | 产物表带 ✓ 通过 / ✗ 未过 / ⏳ 待验证与验证证据；本项目自身用 1671 项断言回归，看得见也要可验证 |
+
+对比调研全文见 [reference-similar-projects.md](reference-similar-projects.md)（12 个同类项目、六维对比、链接全部可点）。
+
+## 适合谁
+
+- 同时用 2 个以上 AI 编码 Agent / 助手的人（本机多开、多项目并行）
+- 需要复盘"这个任务当时到底让 Agent 干了什么"的人
+- 想把 Agent 产物纳入验收流程（通过 / 未过 / 待验证）而不是口头交付的人
+- 要求观测只在本机、不接受任何数据外传的人
 
 ```bash
 # 离线演示（无需任何安装）
@@ -11,8 +47,6 @@ node scripts/serve.mjs     # 然后 http://127.0.0.1:8796
 ```
 
 > **隐私边界**：真实模式读的是各 Agent 自己的会话存储（含提示词、路径、代码片段），服务只绑 `127.0.0.1`、没有账号体系——不要把这些入口暴露到局域网或公网。仓库里只有演示数据；`assets/version.js` 与 `CHANGELOG.md` 是版本与发版说明的单一事实源。
-
-把本机所有 Agent 的任务收进同一个视图：左侧按 Agent 切换，列表按真实工作区分组（含「默认工作区」），可全局按更新时间 / 创建时间 / 执行时间排序；任务看板是独立页面与独立面板；点进详情能直接切换到任何 Agent 的任何任务。详情页 7 个面板回答谁在跑、架构怎样、每个 Agent 的任务与提示词、用过什么工具、进度如何、结果落在哪里、是否待验证；顶栏版本标记标出当前软件版本，点开看本次更新说明。通过 Nginx 或本地 Node 服务打开时，默认采集本机真实会话（Qoder CN / Codex / WorkBuddy / Trae CN / Claude Code），只读且仅监听 `127.0.0.1`。双击 `index.html` 仍可用打包的演示数据离线浏览，不需要构建。
 
 内置一套 4 个 Agent、16 个任务的仿真日志（562 条事件：8 已完成 / 4 运行中 / 3 失败 / 1 已取消），用于 `file://` 离线演示和确定性回归；真实模式的数据来自各 Agent 自己的会话存储，不经过这套仿真数据。
 
@@ -323,8 +357,11 @@ assets/multica.js          桥接客户端（只访问同源 /api/bridge/*）
 assets/collab.js           协作面板：关联、派发、同步、记忆
 assets/livelog.js          线索式执行日志（动态放出 / 重播 / 筛选；参考 DSH 设计，不依赖其运行时）
 assets/livedata.js         实时数据订阅（SSE 通知 + 快照原位刷新）
-assets/version.js          版本单一事实源（releases v1→v5.0.0），顶栏版本标记读这里
+assets/version.js          版本单一事实源（releases v1→v5.0.1），顶栏版本标记读这里
 CHANGELOG.md               发版说明，与 assets/version.js 同步维护
+assets/screenshot-all-tasks.png    README 截图：全部任务列表（演示数据）
+assets/screenshot-task-detail.png  README 截图：任务详情 7 面板（演示数据）
+assets/screenshot-board.png        README 截图：六列看板（演示数据）
 assets/task-board-arch.png v3 架构图局部截图（历史留档；现行看板已独立成面板）
 data/dataset.js            内嵌演示数据集（window.OBS_DATASET）
 data/catalog.json          演示数据的元数据版本
