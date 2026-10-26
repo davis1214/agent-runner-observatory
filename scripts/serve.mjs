@@ -577,7 +577,8 @@ function serveStatic(req, res, url) {
     if (err || !st.isFile()) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('not found'); }
     res.writeHead(200, {
       'Content-Type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream',
-      'Cache-Control': 'no-cache',
+      /* no-store：页面与脚本永远取最新。曾因无缓存头导致旧标签页/启发式缓存停留在无版本号的老 UI。 */
+      'Cache-Control': 'no-store',
       'X-Content-Type-Options': 'nosniff',
       'Referrer-Policy': 'no-referrer',
     });
