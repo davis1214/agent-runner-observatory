@@ -8,6 +8,7 @@ children:
   - assets
   - data
   - deploy
+  - prototype
   - scripts
   - tests
 inventory:
@@ -42,6 +43,7 @@ inventory:
   - tests/real-acceptance.mjs: 本机真实数据验收（100 断言）
   - tests/live-http.mjs: HTTP 实时数据验收（16 断言）
   - tests/fixtures/: 导入边界夹具 + stub Multica CLI
+  - prototype/interaction-v6/: 交互重设计提案（v6 demo：主题聚合 / 需要我关注 / 执行段 / 详情抽屉，待用户验证）
   - reference-similar-projects.md: 同类项目调研对比（10+ 个开源观测工具，六维对比 + 差异化定位 + 可借鉴项）
 ---
 
@@ -62,6 +64,7 @@ inventory:
 - [tests/acceptance.mjs](tests/acceptance.mjs) — 演示数据功能验收
 - [tests/real-acceptance.mjs](tests/real-acceptance.mjs) — 真实数据功能验收
 - [tests/live-http.mjs](tests/live-http.mjs) — HTTP 实时数据验收
+- [prototype/interaction-v6/index.html](prototype/interaction-v6/index.html) — v6 交互 demo（主题聚合视图，待验证）+ [DESIGN.md](prototype/interaction-v6/DESIGN.md) 设计哲学
 - [reference-similar-projects.md](reference-similar-projects.md) — 同类项目调研对比（claude-hud / abtop / task-viewer / AgentSight 等 10+ 个，六维对比）
 
 ## 路由
@@ -170,3 +173,4 @@ v5 把「这个 Agent 到底在干什么」落到可核对的层面：任务与�
 - 2026-10-25 v4：新增 `scripts/real-data.mjs`（5 Agent / 全工作区只读采集）与 `tests/real-acceptance.mjs`；`serve.mjs` 真实模式默认启用并新增 `/api/live/task` 懒加载详情；前端加入工作区分组 / 默认分组 / 时间排序 / 独立看板页 `#/board` / 详情看板面板 / 任务切换器；修复 Codex 恢复会话重复 id；README 与 INDEX 全面改写为真实数据口径，DSH 统一表述为设计参考；验收 1260 + 77 + 16 = 1353
 - 2026-10-25 v5：`observatory.js` 新增 `collectTrace`（痕迹归纳）与提示词捕获（main 取首条 user_message、subagent 取 spawn 事件、回退首条 user_message）、`archInspectorHtml` / `promptPanelHtml` / `tracePanelHtml` / `wireArchitecture`，`renderPanels` 重排为 7 面板；`app.js` 看板页加每列条数选择器与泳道展开 / 收起、顶栏加 `versionChip` / `versionPopover`；新增 `assets/version.js`（版本单一事实源）与 `CHANGELOG.md`；`real-data.mjs` 补附件净化（只留文件名 + 域名）与 Claude Code 用户消息附件、subagent 展开；验收扩到 1555 + 100 + 16 = 1671；修复检查器「固定此 Agent」按钮在悬停预览下被瞬掉的问题
 - 2026-10-26 v5.0.1（开源运营）：README 开头重写为「它解决什么问题 → 为什么不是又一个 Claude Code 面板 → 适合谁」结构，配三张演示截图（全部任务 / 任务详情 / 六列看板，`assets/screenshot-*.png`）；`tests/acceptance.mjs` 版本断言从硬编码 `5.0.0` 改为动态读 `OBS_VERSION.releases[0]`，避免每次发版误报；GitHub 仓库同步（README / CHANGELOG / version.js / acceptance.mjs / INDEX / 三张截图）
+- 2026-10-26 v5.0.2（bug 修复 + 交互提案）：`real-data.mjs` 过滤 Codex 附属线程（auto-review 壳：无用户活动 / 无产物 → `meta.stub`），修复 eos-index 假「运行中 ×5」；Codex / Claude fallback 标题时间改本地格式（原 UTC 差 8 小时）；三套验收 1555 + 99 + 18 全绿。新增 `prototype/interaction-v6/`（ask-matt 路由到 /prototype 流程）：主题聚合视图 demo + DESIGN.md 设计哲学（三层漏斗 / 管理动作优先 / 未确认的完成不是完成 / 附属线程不是任务），待用户验证后改进正式代码。用户反馈「版本号没显示在页面上」→ 排查确认正式版顶栏 chip 一直在渲染（HTTP / file:// 双验证），根因指向长时间开着的旧标签页 / 旧缓存：`serve.mjs` 静态响应 no-cache 升级 no-store、live-http 加 2 条缓存头断言；v6 demo 顶栏补「版本 v5.0.1 · demo」标记；`assets/version.js` 正式发 v5.0.2（发版与 INDEX 记录对齐），8796 常驻服务已用双 fork 守护方式重启生效
