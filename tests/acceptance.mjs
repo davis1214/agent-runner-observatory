@@ -812,9 +812,9 @@ try {
   /* ══════════════ 6.6 顶栏版本标记 ══════════════ */
   section('顶栏版本标记');
   const ver = await page.evaluate(() => window.OBS_VERSION);
-  eq('版本单一事实源可读', [ver.product, ver.version], ['Agent Runner', '5.0.0']);
+  eq('版本单一事实源可读', [ver.product, ver.version], ['Agent Runner', ver.releases[0].version]);
   eq('顶栏版本号与事实源一致', await page.$eval('#ver-chip', e => e.textContent.trim()), 'v' + ver.version);
-  eq('版本按钮标题含版本 / 日期 / 主题', /^v5\.0\.0 · 2026-10-25 · .+/.test(await page.$eval('#ver-chip', e => e.title)), true);
+  eq('版本按钮标题含版本 / 日期 / 主题', new RegExp('^v' + ver.releases[0].version.replace(/\./g, '\\.') + ' · ' + ver.releases[0].released.replace(/-/g, '\\-') + ' · .+').test(await page.$eval('#ver-chip', e => e.title)), true);
   eq('版本号写进 data 属性', await page.$eval('#ver-chip', e => e.dataset.version), ver.releases[0].version);
   await page.click('#ver-chip');
   eq('点击出版本弹层', await page.$eval('#ver-pop', e => !e.hasAttribute('hidden')), true);
