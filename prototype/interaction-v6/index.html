@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent Runner · 交互重设计 Demo（v6 提案）</title>
+<style>
+  :root {
+    --bg: #0e1116; --panel: #151a22; --panel-2: #1b222c; --line: #26303d;
+    --text: #dbe4ee; --muted: #8494a7; --faint: #5a6a7d;
+    --accent: #4da3ff; --ok: #3fbf7f; --warn: #e8b34b; --bad: #e06565; --run: #7f8dff;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 14px/1.55 -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
+    max-width: 1080px; margin: 0 auto; padding: 0 24px 80px;
+  }
+  a { color: var(--accent); text-decoration: none; }
+
+  /* ── 顶栏 ── */
+  header {
+    display: flex; align-items: center; gap: 14px;
+    padding: 16px 0 14px; border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; background: var(--bg); z-index: 20;
+  }
+  header .logo { font-weight: 700; letter-spacing: .5px; }
+  header .logo b { color: var(--accent); }
+  header .meta { color: var(--muted); font-size: 12px; }
+  header .sp { flex: 1; }
+  .chip {
+    font-size: 11px; color: var(--muted); border: 1px solid var(--line);
+    border-radius: 99px; padding: 2px 10px; background: var(--panel);
+  }
+  .chip.v { color: var(--ok); border-color: #2b4a3a; }
+
+  /* ── 需要我关注 ── */
+  .attention {
+    margin-top: 18px; border: 1px solid #3d3324; background: #1c1a12;
+    border-radius: var(--radius); overflow: hidden;
+  }
+  .attention.hidden { display: none; }
+  .attention h2 {
+    font-size: 12px; font-weight: 600; color: var(--warn);
+    padding: 9px 14px 8px; letter-spacing: 1px;
+  }
+  .attention h2 .n { color: var(--muted); font-weight: 400; margin-left: 6px; }
+  .att-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 14px; border-top: 1px solid #2a2519; cursor: pointer;
+  }
+  .att-row:hover { background: #221f15; }
+  .att-row .why { color: var(--warn); font-size: 12px; flex-shrink: 0; }
+  .att-row .what { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .att-row .arrow { color: var(--faint); }
+
+  /* ── 分组锚点 ── */
+  .anchors { display: flex; gap: 8px; margin: 18px 0 4px; }
+  .anchors a {
+    font-size: 12px; color: var(--muted); border: 1px solid var(--line);
+    border-radius: 99px; padding: 3px 12px; background: var(--panel);
+  }
+  .anchors a b { color: var(--text); }
+  .anchors a:hover { color: var(--text); border-color: var(--faint); }
+
+  /* ── 主题分组 ── */
+  .group-title {
+    display: flex; align-items: baseline; gap: 10px;
+    margin: 26px 0 10px; font-size: 13px; font-weight: 650;
+  }
+  .group-title .cnt { color: var(--faint); font-weight: 400; font-size: 12px; }
+  .group-title .hint { color: var(--faint); font-weight: 400; font-size: 12px; margin-left: auto; }
+
+  .theme {
+    border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--panel); margin-bottom: 10px; overflow: hidden;
+  }
+  .theme-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; cursor: pointer; }
+  .theme-head:hover { background: var(--panel-2); }
+  .st { font-size: 12px; font-weight: 600; flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px; }
+  .st.run { color: var(--run); } .st.ok { color: var(--ok); }
+  .st.warn { color: var(--warn); } .st.bad { color: var(--bad); } .st.idle { color: var(--muted); }
+  .dot { width: 7px; height: 7px; border-radius: 99px; }
+  .st.run .dot { background: var(--run); animation: pulse 1.6s infinite; }
+  .st.ok .dot { background: var(--ok); } .st.warn .dot { background: var(--warn); }
+  .st.bad .dot { background: var(--bad); } .st.idle .dot { background: var(--muted); }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+  .theme-name { font-weight: 600; }
+  .theme-sub { color: var(--muted); font-size: 12px; }
+  .theme-meta { margin-left: auto; display: flex; gap: 14px; color: var(--muted); font-size: 12px; flex-shrink: 0; align-items: center; }
+  .agent-tag {
+    font-size: 11px; padding: 1px 8px; border-radius: 99px;
+    border: 1px solid var(--line); color: var(--muted); background: var(--bg);
+  }
+  .caret { color: var(--faint); transition: transform .15s; font-size: 11px; }
+  .theme.open .caret { transform: rotate(90deg); }
+
+  /* ── 执行段 ── */
+  .legs { display: none; border-top: 1px solid var(--line); padding: 6px 16px 12px 34px; background: #12161d; }
+  .theme.open .legs { display: block; }
+  .leg { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px dashed #202834; font-size: 13px; }
+  .leg:last-child { border-bottom: 0; }
+  .leg .tick { width: 8px; height: 8px; border-radius: 99px; flex-shrink: 0; }
+  .leg .tick.run { background: var(--run); } .leg .tick.ok { background: var(--ok); }
+  .leg .tick.warn { background: var(--warn); } .leg .tick.bad { background: var(--bad); }
+  .leg .who { color: var(--text); min-width: 120px; }
+  .leg .when { color: var(--muted); font-size: 12px; min-width: 150px; }
+  .leg .out { color: var(--muted); font-size: 12px; flex: 1; }
+  .leg .out b { color: var(--warn); font-weight: 600; }
+  .leg .go { font-size: 12px; color: var(--accent); cursor: pointer; flex-shrink: 0; }
+  .leg .go:hover { text-decoration: underline; }
+  .leg.merged { color: var(--faint); }
+  .leg.merged .who { color: var(--faint); }
+
+  /* ── 详情抽屉 ── */
+  .drawer-mask { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: none; z-index: 40; }
+  .drawer-mask.show { display: block; }
+  .drawer {
+    position: fixed; top: 0; right: -620px; width: 620px; max-width: 92vw; height: 100vh;
+    background: var(--panel); border-left: 1px solid var(--line); z-index: 41;
+    transition: right .22s ease; overflow-y: auto; padding: 22px 26px 40px;
+  }
+  .drawer.show { right: 0; }
+  .drawer h3 { font-size: 16px; margin-bottom: 4px; }
+  .drawer .crumb { color: var(--faint); font-size: 12px; margin-bottom: 16px; }
+  .drawer .close { position: absolute; top: 16px; right: 20px; color: var(--muted); cursor: pointer; font-size: 18px; }
+  .sec { margin-bottom: 20px; }
+  .sec > h4 {
+    font-size: 12px; color: var(--muted); letter-spacing: 1px; font-weight: 600;
+    margin-bottom: 8px; padding-bottom: 5px; border-bottom: 1px solid var(--line);
+  }
+  .kv { display: flex; gap: 8px; flex-wrap: wrap; }
+  .kv .item {
+    background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
+    padding: 7px 12px; font-size: 12px; color: var(--muted);
+  }
+  .kv .item b { color: var(--text); display: block; font-size: 13px; margin-top: 1px; }
+  .prompt {
+    background: var(--bg); border: 1px solid var(--line); border-left: 3px solid var(--accent);
+    border-radius: 8px; padding: 10px 13px; font-size: 13px; color: var(--text); margin-bottom: 8px;
+  }
+  .prompt .from { color: var(--faint); font-size: 11px; display: block; margin-bottom: 3px; }
+  .timeline { border-left: 2px solid var(--line); margin-left: 6px; padding-left: 16px; }
+  .tl-item { position: relative; padding: 4px 0 10px; font-size: 13px; color: var(--muted); }
+  .tl-item::before {
+    content: ""; position: absolute; left: -21px; top: 9px;
+    width: 8px; height: 8px; border-radius: 99px; background: var(--faint);
+  }
+  .tl-item.key::before { background: var(--accent); }
+  .tl-item .t { color: var(--faint); font-size: 11px; margin-right: 8px; }
+  .tl-item b { color: var(--text); font-weight: 600; }
+  .result-row {
+    display: flex; align-items: center; gap: 10px; padding: 8px 12px;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
+    margin-bottom: 6px; font-size: 13px;
+  }
+  .result-row .v { font-size: 12px; flex-shrink: 0; }
+  .result-row .v.pass { color: var(--ok); } .result-row .v.pending { color: var(--warn); }
+  .result-row .path { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+
+  /* ── 尾注 ── */
+  .footnote { margin-top: 40px; color: var(--faint); font-size: 12px; border-top: 1px solid var(--line); padding-top: 16px; line-height: 1.8; }
+  .footnote b { color: var(--muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><b>●</b> AGENT RUNNER</div>
+  <div class="meta">真实数据 · 只读</div>
+  <div class="sp"></div>
+  <span class="chip">5 个 Agent</span>
+  <span class="chip">主题视图（v6 提案）</span>
+  <span class="chip v" title="版本单一事实源：assets/version.js；发版说明见 CHANGELOG.md。demo 数据为模拟，非真实会话。">版本 v5.0.1 · demo</span>
+</header>
+
+<!-- 需要我关注：异常优先，管理视角的第一屏 -->
+<div class="attention" id="attention">
+  <h2>需要我关注 <span class="n">3 件</span></h2>
+  <div class="att-row" onclick="openDetail('webhook')">
+    <span class="why">⚠️ 失败待查</span>
+    <span class="what">eos-index · GitLab webhook 改造 —— 第 3 次执行在 CI 阶段失败，产物未过验证</span>
+    <span class="arrow">→</span>
+  </div>
+  <div class="att-row" onclick="openDetail('weekly')">
+    <span class="why">⏳ 产物待验证</span>
+    <span class="what">工作台 · 本周运营周报已生成，未经验证就放进「待我确认」</span>
+    <span class="arrow">→</span>
+  </div>
+  <div class="att-row" onclick="openDetail('migrate')">
+    <span class="why">💤 疑似卡住</span>
+    <span class="what">eos-db · 数据迁移脚本执行中，但最近 40 分钟没有新日志</span>
+    <span class="arrow">→</span>
+  </div>
+</div>
+
+<div class="anchors">
+  <a href="#g-run">进行中 <b>2</b></a>
+  <a href="#g-review">待我确认 <b>1</b></a>
+  <a href="#g-done">已完成 <b>4</b></a>
+  <a href="#g-fail">失败 <b>1</b></a>
+</div>
+
+<!-- 进行中 -->
+<div class="group-title" id="g-run">▶ 进行中 <span class="cnt">2 个主题</span><span class="hint">正在执行的排前面</span></div>
+
+<div class="theme open">
+  <div class="theme-head" onclick="this.parentElement.classList.toggle('open')">
+    <span class="st run"><span class="dot"></span>执行中</span>
+    <span>
+      <div class="theme-name">eos-index · 用户权限与角色改造</div>
+      <div class="theme-sub">5 次执行 · 2 个 Agent · 最近活动 10:55</div>
+    </span>
+    <div class="theme-meta">
+      <span class="agent-tag">codex ×5</span><span class="agent-tag">workbuddy ×1</span>
+      <span class="caret">▶</span>
+    </div>
+  </div>
+  <div class="legs">
+    <div class="leg"><span class="tick run"></span><span class="who">codex · 主会话</span><span class="when">09:45 → 进行中</span><span class="out">权限模型重构，进行到角色继承</span><span class="go" onclick="openDetail('perm');event.stopPropagation()">看详情 →</span></div>
+    <div class="leg"><span class="tick ok"></span><span class="who">codex · 第 2 段</span><span class="when">10:32 → 10:55</span><span class="out">产物 2 · 已验证</span><span class="go" onclick="openDetail('perm');event.stopPropagation()">看详情 →</span></div>
+    <div class="leg"><span class="tick ok"></span><span class="who">codex · 第 1 段</span><span class="when">09:45 → 10:32</span><span class="out">产物 3 · 已验证</span><span class="go" onclick="openDetail('perm');event.stopPropagation()">看详情 →</span></div>
+    <div class="leg"><span class="tick ok"></span><span class="who">workbuddy · 方案调研</span><span class="when">09:20 → 09:45</span><span class="out">调研结论已写回 issue</span><span class="go" onclick="openDetail('perm');event.stopPropagation()">看详情 →</span></div>
+    <div class="leg merged"><span class="tick" style="background:#39424f"></span><span class="who">已并入的附属线程 ×4</span><span class="when">10:13 – 10:14</span><span class="out">auto-review 碎片，不单独占一行</span></div>
+  </div>
+</div>
+
+<div class="theme">
+  <div class="theme-head" onclick="this.parentElement.classList.toggle('open')">
+    <span class="st run"><span class="dot"></span>执行中</span>
+    <span>
+      <div class="theme-name">monaiweb · Tailwind v4 磨砂修复</div>
+      <div class="theme-sub">1 次执行 · 最近活动 10:48</div>
+    </span>
+    <div class="theme-meta"><span class="agent-tag">workbuddy ×1</span><span class="caret">▶</span></div>
+  </div>
+  <div class="legs">
+    <div class="leg"><span class="tick run"></span><span class="who">workbuddy · 主会话</span><span class="when">10:40 → 进行中</span><span class="out">backdrop-filter 构建合并问题排查中</span><span class="go" onclick="openDetail('monai');event.stopPropagation()">看详情 →</span></div>
+  </div>
+</div>
+
+<!-- 待我确认 -->
+<div class="group-title" id="g-review">⏳ 待我确认 <span class="cnt">1 个主题</span><span class="hint">做完了，但产物没人验过 —— 验收闭环的入口</span></div>
+
+<div class="theme">
+  <div class="theme-head" onclick="this.parentElement.classList.toggle('open')">
+    <span class="st warn"><span class="dot"></span>待验证</span>
+    <span>
+      <div class="theme-name">工作台 · 本周运营周报</div>
+      <div class="theme-sub">2 次执行 · 最近活动 09:12</div>
+    </span>
+    <div class="theme-meta"><span class="agent-tag">workbuddy ×2</span><span class="caret">▶</span></div>
+  </div>
+  <div class="legs">
+    <div class="leg"><span class="tick warn"></span><span class="who">workbuddy · 成稿</span><span class="when">08:50 → 09:12</span><span class="out">产物 1 · <b>待验证</b>（周报数据未核对）</span><span class="go" onclick="openDetail('weekly');event.stopPropagation()">看详情 →</span></div>
+    <div class="leg"><span class="tick ok"></span><span class="who">workbuddy · 数据拉取</span><span class="when">08:30 → 08:50</span><span class="out">产物 1 · 已验证</span><span class="go" onclick="openDetail('weekly');event.stopPropagation()">看详情 →</span></div>
+  </div>
+</div>
+
+<!-- 已完成 -->
+<div class="group-title" id="g-done">✓ 已完成 <span class="cnt">4 个主题</span><span class="hint">全部产物通过验证才进这里</span></div>
+
+<div class="theme">
+  <div class="theme-head" onclick="this.parentElement.classList.toggle('open')">
+    <span class="st ok"><span class="dot"></span>完成</span>
+    <span>
+      <div class="theme-name">eos-index · 分支保留映射修复</div>
+      <div class="theme-sub">7 次执行 · 2 个 Agent · 今天完成</div>
+    </span>
+    <div class="theme-meta"><span class="agent-tag">codex ×7</span><span class="caret">▶</span></div>
+  </div>
+  <div class="legs">
+    <div class="leg"><span class="tick ok"></span><span class="who">codex · 最终段</span><span class="when">昨天 22:00 → 23:20</span><span class="out">产物 4 · 全部通过（JUnit 5386 项成功）</span><span class="go" onclick="openDetail('branch');event.stopPropagation()">看详情 →</span></div>
+    <div class="leg"><span class="tick ok"></span><span class="who">codex · 前段 ×6</span><span class="when">昨天 13:00 → 22:00</span><span class="out">诊断 → 补丁 → 回归，全部通过</span><span class="go" onclick="openDetail('branch');event.stopPropagation()">看详情 →</span></div>
+  </div>
+</div>
+
+<div class="theme">
+  <div class="theme-head" onclick="this.parentElement.classList.toggle('open')">
+    <span class="st ok"><span class="dot"></span>完成</span>
+    <span><div class="theme-name">eos-index · 域名配置确认</div><div class="theme-sub">1 次执行 · 昨天</div></span>
+    <div class="theme-meta"><span class="agent-tag">codex ×1</span><span class="caret">▶</span></div>
+  </div>
+  <div class="legs"><div class="leg"><span class="tick ok"></span><span class="who">codex · 主会话</span><span class="when">昨天 10:00 → 10:20</span><span class="out">产物 1 · 已验证</span><span class="go" onclick="openDetail('branch');event.stopPropagation()">看详情 →</span></div></div>
+</div>
+
+<div class="theme">
+  <div class="theme-head" onclick="this.parentElement.classList.toggle('open')">
+    <span class="st ok"><span class="dot"></span>完成</span>
+    <span><div class="theme-name">multica · 升级到 v0.6.5-50</div><div class="theme-sub">3 次执行 · 前天完成</div></span>
+    <div class="theme-meta"><span class="agent-tag">codex ×3</span><span class="caret">▶</span></div>
+  </div>
+  <div class="legs"><div class="leg"><span class="tick ok"></span><span class="who">codex · 主会话</span><span class="when">前天 14:00 → 17:30</span><span class="out">产物 6 · 全部通过（含 CLI 交叉编译）</span><span class="go" onclick="openDetail('branch');event.stopPropagation()">看详情 →</span></div></div>
+</div>
+
+<div class="theme">
+  <div class="theme-head" onclick="this.parentElement.classList.toggle('open')">
+    <span class="st ok"><span class="dot"></span>完成</span>
+    <span><div class="theme-name">wb2api-hub · 升级到 v1.7.33</div><div class="theme-sub">1 次执行 · 前天完成</div></span>
+    <div class="theme-meta"><span class="agent-tag">workbuddy ×1</span><span class="caret">▶</span></div>
+  </div>
+  <div class="legs"><div class="leg"><span class="tick ok"></span><span class="who">workbuddy · 主会话</span><span class="when">前天 11:00 → 11:40</span><span class="out">产物 2 · 已验证</span><span class="go" onclick="openDetail('branch');event.stopPropagation()">看详情 →</span></div></div>
+</div>
+
+<!-- 失败 -->
+<div class="group-title" id="g-fail">✗ 失败 <span class="cnt">1 个主题</span><span class="hint">失败不会被折叠隐藏，也永远不进「完成」</span></div>
+
+<div class="theme">
+  <div class="theme-head" onclick="this.parentElement.classList.toggle('open')">
+    <span class="st bad"><span class="dot"></span>失败</span>
+    <span>
+      <div class="theme-name">eos-index · GitLab webhook 改造</div>
+      <div class="theme-sub">3 次执行 · 2 个 Agent · 最后活动 10:30</div>
+    </span>
+    <div class="theme-meta"><span class="agent-tag">codex ×2</span><span class="agent-tag">workbuddy ×1</span><span class="caret">▶</span></div>
+  </div>
+  <div class="legs">
+    <div class="leg"><span class="tick bad"></span><span class="who">codex · 第 3 段</span><span class="when">10:13 → 10:30</span><span class="out">CI 失败 · 产物未过验证</span><span class="go" onclick="openDetail('webhook');event.stopPropagation()">看详情 →</span></div>
+    <div class="leg"><span class="tick bad"></span><span class="who">codex · 第 2 段</span><span class="when">09:50 → 10:13</span><span class="out">测试未过 · 中止</span><span class="go" onclick="openDetail('webhook');event.stopPropagation()">看详情 →</span></div>
+    <div class="leg"><span class="tick ok"></span><span class="who">workbuddy · 方案设计</span><span class="when">09:00 → 09:50</span><span class="out">方案已产出 · 已验证</span><span class="go" onclick="openDetail('webhook');event.stopPropagation()">看详情 →</span></div>
+  </div>
+</div>
+
+<div class="footnote">
+  <b>这是交互提案 demo，数据为模拟。</b>与现行版本的三个根本区别：<br>
+  ① 列表单元从「会话」换成「主题」——eos-index 的 218 个会话碎片在旧版是 218 行，这里是一张主题卡；<br>
+  ② 排序从「最近更新」换成「需要我关注 → 进行中 → 待我确认 → 完成 → 失败」——管理动作优先于时间线；<br>
+  ③ 附属线程（auto-review 等）并入主题，不再单独成行、不再假「运行中」。<br>
+  点任意主题卡展开执行段；点「看详情」打开右侧详情抽屉。
+</div>
+
+<!-- ── 详情抽屉 ── -->
+<div class="drawer-mask" id="mask" onclick="closeDetail()"></div>
+<aside class="drawer" id="drawer">
+  <span class="close" onclick="closeDetail()">✕</span>
+  <div id="drawer-body"></div>
+</aside>
+
+<script>
+const DETAILS = {
+  perm: {
+    title: 'eos-index · 用户权限与角色改造',
+    crumb: '主题 · 进行中 · 5 次执行 · 2 个 Agent',
+    stats: [['状态','执行中'],['Agent','codex + workbuddy'],['执行段','5（另有 4 个附属线程已并入）'],['最近活动','10:55']],
+    prompts: [
+      { from: 'workbuddy · 方案调研 · 09:20', text: '调研 eos-index 现有权限模型：角色、授权链、capability 校验分别在哪一层实现，输出改造约束清单。' },
+      { from: 'codex · 第 1 段 · 09:45', text: '按调研结论重构权限模型：角色继承改为显式声明，保留固定版本引用，不动 GitLab webhook 相关代码。' },
+    ],
+    timeline: [
+      { t: '09:20', text: '<b>workbuddy</b> 开始方案调研' },
+      { t: '09:45', text: '<b>codex</b> 第 1 段启动，读 AGENTS.md 与权限模块' },
+      { t: '10:05', text: '工具调用 27 次 · 写入 roles/inherit.ts' },
+      { t: '10:32', text: '<b>第 1 段完成</b> · 产物 3 · 验证通过' },
+      { t: '10:32', text: '<b>codex</b> 第 2 段续接（同线程 compaction）' },
+      { t: '10:55', text: '进行中 · 角色继承重构' },
+    ],
+    results: [
+      { path: 'src/auth/roles/inherit.ts', v: '✓ 通过', cls: 'pass' },
+      { path: 'src/auth/roles/registry.ts', v: '✓ 通过', cls: 'pass' },
+      { path: 'tests/auth/roles.test.ts', v: '⏳ 待验证', cls: 'pending' },
+    ],
+  },
+  webhook: {
+    title: 'eos-index · GitLab webhook 改造',
+    crumb: '主题 · 失败 · 3 次执行 · 2 个 Agent',
+    stats: [['状态','✗ 失败'],['Agent','codex + workbuddy'],['执行段','3'],['最后活动','10:30']],
+    prompts: [
+      { from: 'workbuddy · 方案设计 · 09:00', text: 'GitLab 改用 webhook 触发：评估现有轮询实现的替换方案，给出连接配置与重试策略。' },
+      { from: 'codex · 第 3 段 · 10:13', text: '按方案实现 webhook 接收端：SourceConfig 连接配置化，保留旧轮询作为回退。' },
+    ],
+    timeline: [
+      { t: '09:00', text: '<b>workbuddy</b> 方案设计，产出改造约束' },
+      { t: '09:50', text: '<b>codex</b> 第 2 段实现 · 测试未过 · 中止' },
+      { t: '10:13', text: '<b>codex</b> 第 3 段重试（auto-review 线程并行审查）' },
+      { t: '10:30', text: '<b>CI 失败</b> · 产物未过验证 · 主题标记失败' },
+    ],
+    results: [
+      { path: 'src/source/webhook/receiver.ts', v: '✗ 未通过', cls: 'pass' },
+      { path: 'src/source/webhook/config.ts', v: '✗ 未通过', cls: 'pass' },
+    ],
+  },
+  weekly: {
+    title: '工作台 · 本周运营周报',
+    crumb: '主题 · 待我确认 · 2 次执行',
+    stats: [['状态','⏳ 产物待验证'],['Agent','workbuddy'],['执行段','2'],['完成时间','09:12']],
+    prompts: [
+      { from: 'workbuddy · 数据拉取 · 08:30', text: '拉取本周车辆运营后台的激活、留存、FOTA 升级成功率三组数据，落成 CSV。' },
+      { from: 'workbuddy · 成稿 · 08:50', text: '基于 CSV 生成周报初稿，重点写环比变化与两个异常点。' },
+    ],
+    timeline: [
+      { t: '08:30', text: '数据拉取启动 · 查 3 个数据源' },
+      { t: '08:50', text: '<b>数据段完成</b> · CSV 产物 · 验证通过' },
+      { t: '09:12', text: '<b>周报成稿</b> · 未经验证 → 进入「待我确认」' },
+    ],
+    results: [
+      { path: 'reports/2026-W43-operations.csv', v: '✓ 通过', cls: 'pass' },
+      { path: 'reports/2026-W43-周报.md', v: '⏳ 待验证', cls: 'pending' },
+    ],
+  },
+  monai: {
+    title: 'monaiweb · Tailwind v4 磨砂修复',
+    crumb: '主题 · 进行中 · 1 次执行',
+    stats: [['状态','执行中'],['Agent','workbuddy'],['执行段','1'],['最近活动','10:48']],
+    prompts: [
+      { from: 'workbuddy · 主会话 · 10:40', text: '排查 globals.css 的 backdrop-filter 在构建产物里消失的问题：怀疑手写 vendor 前缀被 Lightning CSS 合并。' },
+    ],
+    timeline: [
+      { t: '10:40', text: '启动 · 读 globals.css 与构建配置' },
+      { t: '10:48', text: '进行中 · 已定位到手写 -webkit- 别名声明' },
+    ],
+    results: [],
+  },
+  branch: {
+    title: 'eos-index · 分支保留映射修复',
+    crumb: '主题 · 已完成 · 7 次执行 · 昨天',
+    stats: [['状态','✓ 全部通过'],['Agent','codex'],['执行段','7'],['完成时间','昨天 23:20']],
+    prompts: [
+      { from: 'codex · 首段 · 昨天 13:00', text: '只读诊断「保留映射、仅升级固定 Function 版本」在三个正式页面入口的覆盖情况，输出影响面评估。' },
+      { from: 'codex · 最终段 · 昨天 22:00', text: '落地最小补丁：元数据读取路径兼容旧映射，补齐单元测试并跑全量回归。' },
+    ],
+    timeline: [
+      { t: '13:00', text: '诊断启动 · 只读核对三入口' },
+      { t: '17:00', text: '<b>诊断报告</b> 产出 · 影响面确认' },
+      { t: '22:00', text: '最终段实现 · 补丁 + 测试' },
+      { t: '23:20', text: '<b>完成</b> · JUnit 5386 项成功 · 产物 4 全部通过' },
+    ],
+    results: [
+      { path: 'src/core/meta/retained-source.ts', v: '✓ 通过', cls: 'pass' },
+      { path: 'src/core/meta/version-pin.ts', v: '✓ 通过', cls: 'pass' },
+      { path: 'reports/action-branch-index-report.md', v: '✓ 通过', cls: 'pass' },
+      { path: 'build/junit-5386.xml', v: '✓ 通过', cls: 'pass' },
+    ],
+  },
+  migrate: {
+    title: 'eos-db · 数据迁移脚本',
+    crumb: '主题 · 疑似卡住 · 1 次执行',
+    stats: [['状态','💤 疑似卡住'],['Agent','codex'],['执行段','1'],['最近日志','40 分钟前']],
+    prompts: [
+      { from: 'codex · 主会话 · 10:05', text: '执行 ONTEST 库的存量数据迁移：分批 5000 条，失败重试三次，产出迁移对账表。' },
+    ],
+    timeline: [
+      { t: '10:05', text: '迁移启动 · 批次 1–18 正常' },
+      { t: '10:31', text: '批次 19 开始后无新日志（疑似等待锁）' },
+    ],
+    results: [],
+  },
+};
+
+function openDetail(key) {
+  const d = DETAILS[key];
+  if (!d) return;
+  const body = document.getElementById('drawer-body');
+  body.innerHTML = `
+    <h3>${d.title}</h3>
+    <div class="crumb">${d.crumb}</div>
+    <div class="sec"><h4>概要</h4><div class="kv">${d.stats.map(s => `<div class="item">${s[0]}<b>${s[1]}</b></div>`).join('')}</div></div>
+    <div class="sec"><h4>指令（这个任务被要求了什么）</h4>${d.prompts.map(p => `<div class="prompt"><span class="from">${p.from}</span>${p.text}</div>`).join('') || '<div class="tl-item">日志未记录</div>'}</div>
+    <div class="sec"><h4>过程（关键节点，完整日志在原会话）</h4><div class="timeline">${d.timeline.map(x => `<div class="tl-item${x.key ? ' key' : ''}"><span class="t">${x.t}</span>${x.text}</div>`).join('')}</div></div>
+    <div class="sec"><h4>结果（落点与验证）</h4>${d.results.length ? d.results.map(r => `<div class="result-row"><span class="v ${r.cls}">${r.v}</span><span class="path">${r.path}</span></div>`).join('') : '<div class="tl-item">暂无产物</div>'}</div>
+  `;
+  document.getElementById('mask').classList.add('show');
+  document.getElementById('drawer').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+function closeDetail() {
+  document.getElementById('mask').classList.remove('show');
+  document.getElementById('drawer').classList.remove('show');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDetail(); });
+</script>
+</body>
+</html>
