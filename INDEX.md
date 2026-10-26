@@ -18,7 +18,10 @@ inventory:
   - assets/app.css: 设计系统、双栏布局、分组与看板、检查器 / 痕迹 / 版本标记样式、响应式
   - assets/app.js: 列表、工作区分组、时间排序、哈希路由、详情任务切换、本地日志导入、版本标记、看板每列条数与泳道收纳
   - assets/observatory.js: 日志解析 + 模型派生 + 7 面板渲染（含提示词面板、工作痕迹、架构节点检查器）
-  - assets/version.js: 版本单一事实源（releases v1→v5.0.0），顶栏版本标记与弹层读这里
+  - assets/version.js: 版本单一事实源（releases v1→v5.0.1），顶栏版本标记与弹层读这里
+  - assets/screenshot-all-tasks.png: README 截图：全部任务列表（演示数据）
+  - assets/screenshot-task-detail.png: README 截图：任务详情 7 面板（演示数据）
+  - assets/screenshot-board.png: README 截图：六列看板（演示数据）
   - assets/store.js: 本地关联 / 子任务 / 合成事件（localStorage v2）
   - assets/multica.js: 同源桥接客户端（/api/bridge/*）
   - assets/collab.js: Multica 关联 / 子任务派发 / 状态同步 / 记忆
@@ -39,6 +42,7 @@ inventory:
   - tests/real-acceptance.mjs: 本机真实数据验收（100 断言）
   - tests/live-http.mjs: HTTP 实时数据验收（16 断言）
   - tests/fixtures/: 导入边界夹具 + stub Multica CLI
+  - reference-similar-projects.md: 同类项目调研对比（10+ 个开源观测工具，六维对比 + 差异化定位 + 可借鉴项）
 ---
 
 # Agent 执行观测台 — INDEX
@@ -58,6 +62,7 @@ inventory:
 - [tests/acceptance.mjs](tests/acceptance.mjs) — 演示数据功能验收
 - [tests/real-acceptance.mjs](tests/real-acceptance.mjs) — 真实数据功能验收
 - [tests/live-http.mjs](tests/live-http.mjs) — HTTP 实时数据验收
+- [reference-similar-projects.md](reference-similar-projects.md) — 同类项目调研对比（claude-hud / abtop / task-viewer / AgentSight 等 10+ 个，六维对比）
 
 ## 路由
 
