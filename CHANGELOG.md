@@ -2,6 +2,14 @@
 
 版本号的唯一事实源是 `assets/version.js` 的 `releases[0].version`，顶栏 `v…` 徽标与版本弹层都读它。发版时两处一起改：`assets/version.js` 加一条 releases，本文件加同名条目。`tests/acceptance.mjs` 会断言顶栏版本号与 `releases[0]` 一致。
 
+## v5.0.1 — 2026-10-26
+
+README 改版 + 演示截图。无产品功能变更。
+
+- README 重写开头：先讲它解决的四个问题（任务是黑盒 / 任务会漏 / 提示词不可见 / 产物没人验），再讲与同类工具（claude-hud、abtop、claude-task-viewer、Claude-Code-Agent-Monitor、AgentSight 等）的差异和适用人群，链接到同类调研全文。
+- README 补三张演示数据截图：全部任务列表、任务详情（架构 + 提示词 + 痕迹 + 产物验证）、六列看板。
+- 版本号随文档改版 +0.0.1，顶栏标记同步。
+
 ## v5.0.0 — 2026-10-25
 
 工作痕迹面板 + 架构节点检查器。
