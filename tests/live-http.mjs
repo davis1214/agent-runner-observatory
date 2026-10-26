@@ -63,6 +63,15 @@ try {
   check('每个任务都带 JSONL 文本', dataset.tasks.every(t => typeof t.log === 'string' && t.log.length > 0));
   check('快照带 revision', typeof dataset.revision === 'string' && dataset.revision.length > 0);
 
+  /* 缓存头：页面与静态资源必须 no-store，否则旧标签页/启发式缓存会停留在老 UI（曾导致版本号"消失"）。 */
+  {
+    const head = await fetch(`http://127.0.0.1:${port}/`);
+    const cc = head.headers.get('cache-control') || '';
+    check('index.html 缓存头为 no-store', cc === 'no-store', `实际 "${cc}"`);
+    const jsHead = await fetch(`http://127.0.0.1:${port}/assets/version.js`);
+    check('静态 JS 缓存头为 no-store', (jsHead.headers.get('cache-control') || '') === 'no-store');
+  }
+
   browser = await chromium.launch({ channel: 'chrome', headless: true });
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   const errors = [];
