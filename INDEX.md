@@ -151,6 +151,7 @@ v5 把「这个 Agent 到底在干什么」落到可核对的层面：任务与�
 - done：v5 全局看板泳道收纳（已完成进泳道、每列 10/25/50/全部、展开剩余 / 收起）
 - done：v5 顶栏版本标记（`assets/version.js` 单一事实源 + CHANGELOG 同步）
 - done：v5 验收扩到 1555 + 100 + 16 = 1671 项断言 0 失败
+- done：v5.0.1 README 改版（问题-价值-差异化开头 + 三张演示截图）+ 同类项目调研对比（reference-similar-projects.md）+ GitHub 开源发布
 - todo：把 8796 服务做成 LaunchAgent 自启（当前 `service.sh` 手动启动）
 - todo：真实 Multica workspace 写入验收
 - todo：Claude Code hooks logger（PreToolUse / PostToolUse / failure）
@@ -168,3 +169,4 @@ v5 把「这个 Agent 到底在干什么」落到可核对的层面：任务与�
 - 2026-10-25 v3.2：新增 `assets/livedata.js`、`scripts/service.sh`、`scripts/enable-nginx.sh`、`deploy/nginx.conf.example`、`tests/live-http.mjs`；`serve.mjs` 默认端口改 8796 并增加 `/api/live/dataset|stream|events`；前端 API 基址改相对路径以兼容子路径部署；本机 Nginx 增加两个入口；验收 1265 + 16 = 1281
 - 2026-10-25 v4：新增 `scripts/real-data.mjs`（5 Agent / 全工作区只读采集）与 `tests/real-acceptance.mjs`；`serve.mjs` 真实模式默认启用并新增 `/api/live/task` 懒加载详情；前端加入工作区分组 / 默认分组 / 时间排序 / 独立看板页 `#/board` / 详情看板面板 / 任务切换器；修复 Codex 恢复会话重复 id；README 与 INDEX 全面改写为真实数据口径，DSH 统一表述为设计参考；验收 1260 + 77 + 16 = 1353
 - 2026-10-25 v5：`observatory.js` 新增 `collectTrace`（痕迹归纳）与提示词捕获（main 取首条 user_message、subagent 取 spawn 事件、回退首条 user_message）、`archInspectorHtml` / `promptPanelHtml` / `tracePanelHtml` / `wireArchitecture`，`renderPanels` 重排为 7 面板；`app.js` 看板页加每列条数选择器与泳道展开 / 收起、顶栏加 `versionChip` / `versionPopover`；新增 `assets/version.js`（版本单一事实源）与 `CHANGELOG.md`；`real-data.mjs` 补附件净化（只留文件名 + 域名）与 Claude Code 用户消息附件、subagent 展开；验收扩到 1555 + 100 + 16 = 1671；修复检查器「固定此 Agent」按钮在悬停预览下被瞬掉的问题
+- 2026-10-26 v5.0.1（开源运营）：README 开头重写为「它解决什么问题 → 为什么不是又一个 Claude Code 面板 → 适合谁」结构，配三张演示截图（全部任务 / 任务详情 / 六列看板，`assets/screenshot-*.png`）；`tests/acceptance.mjs` 版本断言从硬编码 `5.0.0` 改为动态读 `OBS_VERSION.releases[0]`，避免每次发版误报；GitHub 仓库同步（README / CHANGELOG / version.js / acceptance.mjs / INDEX / 三张截图）
