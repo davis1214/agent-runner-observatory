@@ -7,6 +7,17 @@
 
   const releases = [
     {
+      version: '5.0.2',
+      released: '2026-10-26',
+      headline: '假「运行中」修复 + 缓存加固',
+      notes: [
+        '修复 Codex 分类页假「运行中」：桌面端为 auto-review 开的附属线程壳（无用户活动、无产物）不再被当成独立任务；工作区任务列表只剩真实执行会话。',
+        '修复任务标题里的时间显示：Codex / Claude 的兜底标题从 UTC 改为本地时间（原来差 8 小时）。',
+        '缓存加固：页面与静态资源响应改发 Cache-Control: no-store，长时间开着的旧标签页不再停留在老 UI（曾导致顶栏版本号「消失」）；live-http 验收新增缓存头断言。',
+        'v6 交互提案 demo（prototype/interaction-v6/）顶栏补版本号标记。',
+      ],
+    },
+    {
       version: '5.0.1',
       released: '2026-10-26',
       headline: 'README 改版 + 演示截图',
